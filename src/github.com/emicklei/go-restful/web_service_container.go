@@ -69,7 +69,7 @@ func dispatchServices(httpWriter http.ResponseWriter, httpRequest *http.Request,
 		}
 	}()
 	// step 1. Identify the root resource class (Dispatcher)
-	dispatcher, finalMatch, err := detectDispatcher(httpRequest.URL.Path, webServices)
+	dispatcher, finalMatch, err := detectDispatcher(httpRequest.URL.Path, services)
 	if err != nil {
 		httpWriter.WriteHeader(http.StatusNotFound)
 		return
