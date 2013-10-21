@@ -11,7 +11,7 @@ import (
 func TestPathParameter(t *testing.T) {
 	hreq := http.Request{Method: "GET"}
 	hreq.URL, _ = url.Parse("http://www.google.com/search?q=foo&q=bar")
-	rreq := Request{http.Request: &hreq}
+	rreq := Request{Request: &hreq}
 	if rreq.QueryParameter("q") != "foo" {
 		t.Errorf("q!=foo %#v", rreq)
 	}
@@ -26,7 +26,7 @@ func TestAcceptHeader(t *testing.T) {
 	hreq.Header = http.Header{}
 	hreq.Header.Set("Content-Type", "application/JSON; charset=UTF-8")
 	hreq.Body = ioutil.NopCloser(bytes.NewBufferString("{\"name\":\"foo\"}"))
-	rreq := Request{http.Request: &hreq}
+	rreq := Request{Request: &hreq}
 	msg := Message{}
 	err := rreq.ReadEntity(&msg)
 	if err != nil {
