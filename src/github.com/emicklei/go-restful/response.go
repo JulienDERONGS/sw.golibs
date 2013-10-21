@@ -32,7 +32,7 @@ func (self Response) AddHeader(header string, value string) Response {
 // If an Accept header is specified then return the Content-Type as specified by the first in the Route.Produces that is matched with the Accept header.
 // Current implementation ignores any q-parameters in the Accept Header. 
 func (self Response) WriteEntity(value interface{}) Response {
-	if "" == self.accept || strings.Index(self.accept, "*/*") != -1 {
+	if "" == self.accept || strings.Contains(self.accept, "*/*") {
 		for _, each := range self.produces {
 			if MIME_JSON == each {
 				self.WriteAsJson(value)
@@ -45,7 +45,7 @@ func (self Response) WriteEntity(value interface{}) Response {
 		}
 	} else { // Accept header specified ; scan for each element in Route.Produces		
 		for _, each := range self.produces {
-			if strings.Index(self.accept, each) != -1 {
+			if strings.Contains(self.accept, each) {
 				if MIME_JSON == each {
 					self.WriteAsJson(value)
 					return self
