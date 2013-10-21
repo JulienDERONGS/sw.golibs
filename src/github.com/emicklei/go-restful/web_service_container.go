@@ -59,7 +59,7 @@ func fixedPrefixPath(pathspec string) string {
 
 // Dispatch the incoming Http Request to a matching Dispatcher.
 // Matching algorithm is conform http://jsr311.java.net/nonav/releases/1.1/spec/spec.html, see jsr311.go
-func Dispatch(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+func dispatchServices(httpWriter http.ResponseWriter, httpRequest *http.Request, services []Dispatcher) {
 	// catch all for 500 response
 	defer func() {
 		if r := recover(); r != nil {
@@ -82,4 +82,12 @@ func Dispatch(httpWriter http.ResponseWriter, httpRequest *http.Request) {
 		route.dispatch(httpWriter, httpRequest)
 	}
 	// else a non-200 response has already been written
+}
+
+func Dispatch(httpWriter http.ResponseWriter, httpRequest *http.Request) {
+	dispatchServices(httpWriter, httpRequest, webServices)
+}
+
+func DispatchTo(service Dispatcher, httpWriter http.ResponseWriter, httpRequest *http.Request) {
+	dispatchServices(httpWriter, httpRequest, []Dispatcher{service})
 }
