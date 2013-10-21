@@ -4,13 +4,13 @@
 package gocheck_test
 
 import (
-	"launchpad.net/gocheck"
-	"testing"
-	"runtime"
-	"regexp"
 	"flag"
 	"fmt"
+	"launchpad.net/gocheck"
 	"os"
+	"regexp"
+	"runtime"
+	"testing"
 	"time"
 )
 
@@ -94,14 +94,14 @@ func (s *SuccessHelper) TestLogAndSucceed(c *gocheck.C) {
 // Helper suite for testing ordering and behavior of fixture.
 
 type FixtureHelper struct {
-	calls    [64]string
-	n        int
-	panicOn  string
-	skip     bool
-	skipOnN  int
-	sleepOn  string
-	sleep    time.Duration
-	bytes    int64
+	calls   [64]string
+	n       int
+	panicOn string
+	skip    bool
+	skipOnN int
+	sleepOn string
+	sleep   time.Duration
+	bytes   int64
 }
 
 func (s *FixtureHelper) trace(name string, c *gocheck.C) {

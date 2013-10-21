@@ -39,13 +39,13 @@ func (s *BenchmarkS) TestStreamTestTiming(c *C) {
 // Quite unfortunate that these two tests alone account for most of the 
 
 func (s *BenchmarkS) TestBenchmark(c *C) {
-	helper := FixtureHelper{sleep: 1*time.Millisecond}
+	helper := FixtureHelper{sleep: 1 * time.Millisecond}
 	output := String{}
 	runConf := RunConf{
-		Output: &output,
-		Benchmark: true,
-		BenchmarkTime: 100*time.Millisecond,
-		Filter: "Benchmark1",
+		Output:        &output,
+		Benchmark:     true,
+		BenchmarkTime: 100 * time.Millisecond,
+		Filter:        "Benchmark1",
 	}
 	Run(&helper, &runConf)
 
@@ -54,13 +54,13 @@ func (s *BenchmarkS) TestBenchmark(c *C) {
 }
 
 func (s *BenchmarkS) TestBenchmarkBytes(c *C) {
-	helper := FixtureHelper{sleep: 1*time.Millisecond}
+	helper := FixtureHelper{sleep: 1 * time.Millisecond}
 	output := String{}
 	runConf := RunConf{
-		Output: &output,
-		Benchmark: true,
-		BenchmarkTime: 100*time.Millisecond,
-		Filter: "Benchmark2",
+		Output:        &output,
+		Benchmark:     true,
+		BenchmarkTime: 100 * time.Millisecond,
+		Filter:        "Benchmark2",
 	}
 	Run(&helper, &runConf)
 
