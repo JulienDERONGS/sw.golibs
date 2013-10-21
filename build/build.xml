@@ -6,6 +6,7 @@
 
     <target name="update">
         <update name="golang" version="1.1.1"/>
+        <update name="protobuf"/>
     </target>
 
     <target name="build">
@@ -25,7 +26,7 @@
         <safe-move file="${out.dir}/bin_${platform}.zip">
             <zip destfile="@{file}" duplicate="fail">
                 <mappedresources>
-                    <fileset dir="${out.dir}" includes="**/*.exe"/>
+                    <fileset dir="${root.dir}/bin" includes="proto*.exe"/>
                     <flattenmapper/>
                 </mappedresources>
             </zip>
