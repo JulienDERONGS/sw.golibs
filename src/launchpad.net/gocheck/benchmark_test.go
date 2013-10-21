@@ -39,31 +39,31 @@ func (s *BenchmarkS) TestStreamTestTiming(c *C) {
 // Quite unfortunate that these two tests alone account for most of the 
 
 func (s *BenchmarkS) TestBenchmark(c *C) {
-	helper := FixtureHelper{sleep: 100000}
+	helper := FixtureHelper{sleep: 1*time.Millisecond}
 	output := String{}
 	runConf := RunConf{
 		Output: &output,
 		Benchmark: true,
-		BenchmarkTime: 10000000,
+		BenchmarkTime: 100*time.Millisecond,
 		Filter: "Benchmark1",
 	}
 	Run(&helper, &runConf)
 
-	expected := "PASS: gocheck_test\\.go:[0-9]+: FixtureHelper\\.Benchmark1\t *100\t *[12][0-9]{5} ns/op\n"
+	expected := "PASS: gocheck_test\\.go:[0-9]+: FixtureHelper\\.Benchmark1\t *100\t *[12][0-9]{6} ns/op\n"
 	c.Assert(output.value, Matches, expected)
 }
 
 func (s *BenchmarkS) TestBenchmarkBytes(c *C) {
-	helper := FixtureHelper{sleep: 100000}
+	helper := FixtureHelper{sleep: 1*time.Millisecond}
 	output := String{}
 	runConf := RunConf{
 		Output: &output,
 		Benchmark: true,
-		BenchmarkTime: 10000000,
+		BenchmarkTime: 100*time.Millisecond,
 		Filter: "Benchmark2",
 	}
 	Run(&helper, &runConf)
 
-	expected := "PASS: gocheck_test\\.go:[0-9]+: FixtureHelper\\.Benchmark2\t *100\t *[12][0-9]{5} ns/op\t *[4-9]\\.[0-9]{2} MB/s\n"
+	expected := "PASS: gocheck_test\\.go:[0-9]+: FixtureHelper\\.Benchmark2\t *100\t *[12][0-9]{6} ns/op\t *1\\.[0-9]{2} MB/s\n"
 	c.Assert(output.value, Matches, expected)
 }
