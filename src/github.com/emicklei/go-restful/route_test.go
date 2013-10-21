@@ -18,7 +18,7 @@ func TestMatchesAcceptXml(t *testing.T) {
 	if r.matchesAccept("application/json") {
 		t.Errorf("accept should not match json")
 	}
-	if !r.matchesAccept("application/xml") {
+	if !r.matchesAccept("application/json, application/XML; q=0.5") {
 		t.Errorf("accept should match xml")
 	}
 }
@@ -29,7 +29,7 @@ func TestMatchesContentTypeXml(t *testing.T) {
 	if r.matchesContentType("application/json") {
 		t.Errorf("accept should not match json")
 	}
-	if !r.matchesContentType("application/xml") {
+	if !r.matchesContentType("application/XML; charset=UTF-8") {
 		t.Errorf("accept should match xml")
 	}
 }

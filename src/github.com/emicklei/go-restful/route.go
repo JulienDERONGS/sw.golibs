@@ -42,15 +42,17 @@ func (self *Route) dispatch(httpWriter http.ResponseWriter, httpRequest *http.Re
 }
 
 // Return whether the mimeType matches to what this Route can produce.
-func (self Route) matchesAccept(mimeTypesWithQuality string) bool {
-	parts := strings.Split(mimeTypesWithQuality, ",")
+func (self Route) matchesAccept(mimeTypes string) bool {
+	parts := strings.Split(mimeTypes, ",")
 	for _, each := range parts {
-		withoutQuality := strings.Split(each, ";")[0]
-		if withoutQuality == "*/*" {
+		each = strings.Split(each, ";")[0]
+		each = strings.ToLower(each)
+		each = strings.Trim(each, " ")
+		if each == "*/*" {
 			return true
 		}
 		for _, other := range self.Produces {
-			if other == withoutQuality {
+			if other == each {
 				return true
 			}
 		}
@@ -60,12 +62,12 @@ func (self Route) matchesAccept(mimeTypesWithQuality string) bool {
 
 // Return whether the mimeType matches to what this Route can consume.
 func (self Route) matchesContentType(mimeTypes string) bool {
-	parts := strings.Split(mimeTypes, ",")
-	for _, each := range parts {
-		for _, other := range self.Consumes {
-			if other == "*/*" || other == each {
-				return true
-			}
+	value := strings.Split(mimeTypes, ";")[0]
+	value = strings.ToLower(value)
+	value = strings.Trim(value, " ")
+	for _, other := range self.Consumes {
+		if other == "*/*" || other == value {
+			return true
 		}
 	}
 	return false

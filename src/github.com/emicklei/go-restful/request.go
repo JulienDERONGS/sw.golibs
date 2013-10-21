@@ -33,13 +33,13 @@ func (self *Request) ReadEntity(entityReference interface{}) error {
 		return err
 	}
 	field := self.Request.Header.Get(HEADER_ContentType)
-	contentType := strings.Split(field, ";")[0]
-	contentType = strings.Trim(contentType, " ")
-	contentType = strings.ToLower(contentType)
-	if contentType == MIME_XML {
+	value := strings.Split(field, ";")[0]
+	value = strings.Trim(value, " ")
+	value = strings.ToLower(value)
+	if value == MIME_XML {
 		return xml.Unmarshal(buffer, entityReference)
 	}
-	if contentType == MIME_JSON {
+	if value == MIME_JSON {
 		return json.Unmarshal(buffer, entityReference)
 	}
 	return errors.New("unknown content-type")
