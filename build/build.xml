@@ -22,6 +22,14 @@
 
     <target name="package">
         <go_package/>
+        <safe-move file="${out.dir}/bin_${platform}.zip">
+            <zip destfile="@{file}" duplicate="fail">
+                <mappedresources>
+                    <fileset dir="${out.dir}" includes="**/*.exe"/>
+                    <flattenmapper/>
+                </mappedresources>
+            </zip>
+        </safe-move>
     </target>
 
     <target name="all" depends="update,build,test,package"/>
