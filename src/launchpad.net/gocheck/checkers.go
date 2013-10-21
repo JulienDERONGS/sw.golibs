@@ -456,3 +456,247 @@ func (checker *implementsChecker) Check(params []interface{}, names []string) (r
 	}
 	return obtained.Type().Implements(ifaceptr.Elem().Type()), ""
 }
+
+// -----------------------------------------------------------------------
+// Greater checker.
+
+type greaterChecker struct {
+	*CheckerInfo
+}
+
+// The Greater checker verifies that the obtained value is greater than
+// the expected value, according to usual Go semantics for >.
+//
+// For example:
+//
+//     c.Assert(value, Greater, 42)
+//
+var Greater Checker = &greaterChecker{
+	&CheckerInfo{Name: "Greater", Params: []string{"obtained", "expected"}},
+}
+
+func (checker *greaterChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	defer func() {
+		if v := recover(); v != nil {
+			result = false
+			error = fmt.Sprint(v)
+		}
+	}()
+	a := reflect.TypeOf(params[0])
+	b := reflect.TypeOf(params[1])
+	if a != b {
+		return false, "input values must have the same type"
+	}
+	switch t := params[0].(type) {
+	case int:
+		return t > params[1].(int), ""
+	case uint:
+		return t > params[1].(uint), ""
+	case uintptr:
+		return t > params[1].(uintptr), ""
+	case int8:
+		return t > params[1].(int8), ""
+	case int16:
+		return t > params[1].(int16), ""
+	case int32:
+		return t > params[1].(int32), ""
+	case int64:
+		return t > params[1].(int64), ""
+	case uint8:
+		return t > params[1].(uint8), ""
+	case uint16:
+		return t > params[1].(uint16), ""
+	case uint32:
+		return t > params[1].(uint32), ""
+	case uint64:
+		return t > params[1].(uint64), ""
+	case float32:
+		return t > params[1].(float32), ""
+	case float64:
+		return t > params[1].(float64), ""
+	}
+	return false, "Obtained value is not a numeric type"
+}
+
+// -----------------------------------------------------------------------
+// GreaterOrEquals checker.
+
+type greaterOrEqualsChecker struct {
+	*CheckerInfo
+}
+
+// The GreaterOrEquals checker verifies that the obtained value is greater than
+// or equals to the expected value, according to usual Go semantics for >=.
+//
+// For example:
+//
+//     c.Assert(value, GreaterOrEquals, 42)
+//
+var GreaterOrEquals Checker = &greaterOrEqualsChecker{
+	&CheckerInfo{Name: "GreaterOrEquals", Params: []string{"obtained", "expected"}},
+}
+
+func (checker *greaterOrEqualsChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	defer func() {
+		if v := recover(); v != nil {
+			result = false
+			error = fmt.Sprint(v)
+		}
+	}()
+	a := reflect.TypeOf(params[0])
+	b := reflect.TypeOf(params[1])
+	if a != b {
+		return false, "input values must have the same type"
+	}
+	switch t := params[0].(type) {
+	case int:
+		return t >= params[1].(int), ""
+	case uint:
+		return t >= params[1].(uint), ""
+	case uintptr:
+		return t >= params[1].(uintptr), ""
+	case int8:
+		return t >= params[1].(int8), ""
+	case int16:
+		return t >= params[1].(int16), ""
+	case int32:
+		return t >= params[1].(int32), ""
+	case int64:
+		return t >= params[1].(int64), ""
+	case uint8:
+		return t >= params[1].(uint8), ""
+	case uint16:
+		return t >= params[1].(uint16), ""
+	case uint32:
+		return t >= params[1].(uint32), ""
+	case uint64:
+		return t >= params[1].(uint64), ""
+	case float32:
+		return t >= params[1].(float32), ""
+	case float64:
+		return t >= params[1].(float64), ""
+	}
+	return false, "Obtained value is not a numeric type"
+}
+
+// -----------------------------------------------------------------------
+// Lesser checker.
+
+type lesserChecker struct {
+	*CheckerInfo
+}
+
+// The Lesser checker verifies that the obtained value is lesser than
+// the expected value, according to usual Go semantics for <.
+//
+// For example:
+//
+//     c.Assert(value, Lesser, 42)
+//
+var Lesser Checker = &lesserChecker{
+	&CheckerInfo{Name: "Lesser", Params: []string{"obtained", "expected"}},
+}
+
+func (checker *lesserChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	defer func() {
+		if v := recover(); v != nil {
+			result = false
+			error = fmt.Sprint(v)
+		}
+	}()
+	a := reflect.TypeOf(params[0])
+	b := reflect.TypeOf(params[1])
+	if a != b {
+		return false, "input values must have the same type"
+	}
+	switch t := params[0].(type) {
+	case int:
+		return t < params[1].(int), ""
+	case uint:
+		return t < params[1].(uint), ""
+	case uintptr:
+		return t < params[1].(uintptr), ""
+	case int8:
+		return t < params[1].(int8), ""
+	case int16:
+		return t < params[1].(int16), ""
+	case int32:
+		return t < params[1].(int32), ""
+	case int64:
+		return t < params[1].(int64), ""
+	case uint8:
+		return t < params[1].(uint8), ""
+	case uint16:
+		return t < params[1].(uint16), ""
+	case uint32:
+		return t < params[1].(uint32), ""
+	case uint64:
+		return t < params[1].(uint64), ""
+	case float32:
+		return t < params[1].(float32), ""
+	case float64:
+		return t < params[1].(float64), ""
+	}
+	return false, "Obtained value is not a numeric type"
+}
+
+// -----------------------------------------------------------------------
+// LesserOrEquals checker.
+
+type lesserOrEqualsChecker struct {
+	*CheckerInfo
+}
+
+// The LesserOrEquals checker verifies that the obtained value is lesser than
+// or equals to the expected value, according to usual Go semantics for <=.
+//
+// For example:
+//
+//     c.Assert(value, LesserOrEquals, 42)
+//
+var LesserOrEquals Checker = &lesserOrEqualsChecker{
+	&CheckerInfo{Name: "LesserOrEquals", Params: []string{"obtained", "expected"}},
+}
+
+func (checker *lesserOrEqualsChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	defer func() {
+		if v := recover(); v != nil {
+			result = false
+			error = fmt.Sprint(v)
+		}
+	}()
+	a := reflect.TypeOf(params[0])
+	b := reflect.TypeOf(params[1])
+	if a != b {
+		return false, "input values must have the same type"
+	}
+	switch t := params[0].(type) {
+	case int:
+		return t <= params[1].(int), ""
+	case uint:
+		return t <= params[1].(uint), ""
+	case uintptr:
+		return t <= params[1].(uintptr), ""
+	case int8:
+		return t <= params[1].(int8), ""
+	case int16:
+		return t <= params[1].(int16), ""
+	case int32:
+		return t <= params[1].(int32), ""
+	case int64:
+		return t <= params[1].(int64), ""
+	case uint8:
+		return t <= params[1].(uint8), ""
+	case uint16:
+		return t <= params[1].(uint16), ""
+	case uint32:
+		return t <= params[1].(uint32), ""
+	case uint64:
+		return t <= params[1].(uint64), ""
+	case float32:
+		return t <= params[1].(float32), ""
+	case float64:
+		return t <= params[1].(float64), ""
+	}
+	return false, "Obtained value is not a numeric type"
+}

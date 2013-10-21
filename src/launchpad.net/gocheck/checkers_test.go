@@ -270,3 +270,51 @@ func (s *CheckersS) TestImplements(c *gocheck.C) {
 	testCheck(c, gocheck.Implements, false, "ifaceptr should be a pointer to an interface variable", 0, interface{}(nil))
 	testCheck(c, gocheck.Implements, false, "", interface{}(nil), &e)
 }
+
+func (s *CheckersS) TestGreater(c *gocheck.C) {
+	testInfo(c, gocheck.Greater, "Greater", []string{"obtained", "expected"})
+
+	testCheck(c, gocheck.Greater, true, "", 42, 41)
+	testCheck(c, gocheck.Greater, false, "", 42, 42)
+	testCheck(c, gocheck.Greater, false, "", 42, 43)
+
+	// Some bad values
+	testCheck(c, gocheck.Greater, false, "input values must have the same type", 0, uint(1))
+	testCheck(c, gocheck.Greater, false, "Obtained value is not a numeric type", "a", "b")
+}
+
+func (s *CheckersS) TestGreaterOrEquals(c *gocheck.C) {
+	testInfo(c, gocheck.GreaterOrEquals, "GreaterOrEquals", []string{"obtained", "expected"})
+
+	testCheck(c, gocheck.GreaterOrEquals, true, "", 42, 41)
+	testCheck(c, gocheck.GreaterOrEquals, true, "", 42, 42)
+	testCheck(c, gocheck.GreaterOrEquals, false, "", 42, 43)
+
+	// Some bad values
+	testCheck(c, gocheck.GreaterOrEquals, false, "input values must have the same type", 0, uint(1))
+	testCheck(c, gocheck.GreaterOrEquals, false, "Obtained value is not a numeric type", "a", "b")
+}
+
+func (s *CheckersS) TestLesser(c *gocheck.C) {
+	testInfo(c, gocheck.Lesser, "Lesser", []string{"obtained", "expected"})
+
+	testCheck(c, gocheck.Lesser, false, "", 42, 41)
+	testCheck(c, gocheck.Lesser, false, "", 42, 42)
+	testCheck(c, gocheck.Lesser, true, "", 42, 43)
+
+	// Some bad values
+	testCheck(c, gocheck.Lesser, false, "input values must have the same type", 0, uint(1))
+	testCheck(c, gocheck.Lesser, false, "Obtained value is not a numeric type", "a", "b")
+}
+
+func (s *CheckersS) TestLesserOrEquals(c *gocheck.C) {
+	testInfo(c, gocheck.LesserOrEquals, "LesserOrEquals", []string{"obtained", "expected"})
+
+	testCheck(c, gocheck.LesserOrEquals, false, "", 42, 41)
+	testCheck(c, gocheck.LesserOrEquals, true, "", 42, 42)
+	testCheck(c, gocheck.LesserOrEquals, true, "", 42, 43)
+
+	// Some bad values
+	testCheck(c, gocheck.LesserOrEquals, false, "input values must have the same type", 0, uint(1))
+	testCheck(c, gocheck.LesserOrEquals, false, "Obtained value is not a numeric type", "a", "b")
+}
