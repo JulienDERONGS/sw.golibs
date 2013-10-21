@@ -3,8 +3,10 @@ package restful
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 // Request is a wrapper for a http Request that provides convenience methods
@@ -25,15 +27,20 @@ func (self *Request) QueryParameter(name string) string {
 
 // ReadEntity check the Accept header and reads the content into the entityReference
 func (self *Request) ReadEntity(entityReference interface{}) error {
-	contentType := self.Request.Header.Get(HEADER_ContentType)
 	defer self.Request.Body.Close()
 	buffer, err := ioutil.ReadAll(self.Request.Body)
-	if err == nil && MIME_XML == contentType {
-		err = xml.Unmarshal(buffer, entityReference)
-	} else {
-		if err == nil && MIME_JSON == contentType {
-			err = json.Unmarshal(buffer, entityReference)
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	field := self.Request.Header.Get(HEADER_ContentType)
+	contentType := strings.Split(field, ";")[0]
+	contentType = strings.Trim(contentType, " ")
+	contentType = strings.ToLower(contentType)
+	if contentType == MIME_XML {
+		return xml.Unmarshal(buffer, entityReference)
+	}
+	if contentType == MIME_JSON {
+		return json.Unmarshal(buffer, entityReference)
+	}
+	return errors.New("unknown content-type")
 }
