@@ -1,0 +1,9 @@
+/bin/
+/run/
+/out/
+/dist/
+/include/
+/pkg/
+tags
+*.swp
+/lib/

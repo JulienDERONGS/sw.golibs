@@ -1,0 +1,29 @@
+<project name="golibs" default="all">
+
+    <property environment="env"/>
+    <property name="env.PONEY_HOME" value="//file1/masa/common/dev/common/poney"/>
+    <import file="${env.PONEY_HOME}/poney.xml"/>
+
+    <target name="update">
+        <update name="golang" version="1.1.1"/>
+    </target>
+
+    <target name="build">
+        <go cmd="install"/>
+    </target>
+
+    <target name="test">
+        <go cmd="test"/>
+    </target>
+
+    <target name="fmt">
+        <go cmd="fmt"/>
+    </target>
+
+    <target name="package">
+        <go_package/>
+    </target>
+
+    <target name="all" depends="update,build,test,package"/>
+
+</project>
