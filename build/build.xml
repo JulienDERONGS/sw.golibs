@@ -6,7 +6,7 @@
 
     <target name="update">
         <update name="golang" version="1.1.1"/>
-        <update name="protobuf"/>
+        <update name="protobuf" version="2.3.0"/>
     </target>
 
     <target name="build">
