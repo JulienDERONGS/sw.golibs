@@ -1,0 +1,3 @@
+[submodule "src/github.com/masagroup/difflib"]
+	path = src/github.com/masagroup/difflib
+	url = git@github.com:masagroup/difflib.git
