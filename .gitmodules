@@ -1,3 +1,9 @@
 [submodule "src/github.com/masagroup/difflib"]
 	path = src/github.com/masagroup/difflib
 	url = git@github.com:masagroup/difflib.git
+[submodule "src/github.com/masagroup/go-spew"]
+	path = src/github.com/masagroup/go-spew
+	url = git@github.com:masagroup/go-spew.git
+[submodule "src/github.com/davecgh/go-spew"]
+	path = src/github.com/davecgh/go-spew
+	url = git@github.com:masagroup/go-spew.git
