@@ -10,15 +10,12 @@
     </target>
 
     <target name="build">
-        <go cmd="install"/>
+        <go_build/>
+        <go cmd="vet"/>
     </target>
 
     <target name="test">
         <go cmd="test"/>
-    </target>
-
-    <target name="fmt">
-        <go cmd="fmt"/>
     </target>
 
     <target name="package">
