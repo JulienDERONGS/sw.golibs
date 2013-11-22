@@ -1,6 +1,0 @@
-[submodule "src/github.com/davecgh/go-spew"]
-	path = src/github.com/davecgh/go-spew
-	url = git@github.com:masagroup/go-spew.git
-[submodule "src/github.com/pmezard/go-difflib"]
-	path = src/github.com/pmezard/go-difflib
-	url = git@github.com:masagroup/go-difflib.git
