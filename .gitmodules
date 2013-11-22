@@ -1,0 +1,3 @@
+[submodule "src/github.com/pmezard/go-difflib"]
+	path = src/github.com/pmezard/go-difflib
+	url = git@github.com:masagroup/go-difflib.git
