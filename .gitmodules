@@ -4,3 +4,6 @@
 [submodule "src/github.com/davecgh/go-spew"]
 	path = src/github.com/davecgh/go-spew
 	url = git@github.com:masagroup/go-spew.git
+[submodule "src/launchpad.net/gocheck"]
+	path = src/launchpad.net/gocheck
+	url = git@github.com:masagroup/gocheck.git
