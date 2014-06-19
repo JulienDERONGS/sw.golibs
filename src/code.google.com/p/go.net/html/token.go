@@ -734,7 +734,6 @@ func (z *Tokenizer) readCDATA() bool {
 			brackets = 0
 		}
 	}
-	panic("unreachable")
 }
 
 // startTagIn returns whether the start tag in z.buf[z.data.start:z.data.end]
