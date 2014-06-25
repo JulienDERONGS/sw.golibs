@@ -100,16 +100,6 @@ func ExampleMulticastUDPListener() {
 			}
 		}
 	}
-
-	err = p.LeaveGroup(en1, &net.UDPAddr{IP: group})
-	if err != nil {
-		log.Fatal(err)
-	}
-	newgroup := net.IPv4(224, 0, 0, 249)
-	err = p.JoinGroup(en1, &net.UDPAddr{IP: newgroup})
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 type OSPFHeader struct {

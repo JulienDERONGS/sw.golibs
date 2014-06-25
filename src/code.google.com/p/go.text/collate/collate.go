@@ -441,7 +441,6 @@ func (i *iter) nextPrimary() int {
 			return 0
 		}
 	}
-	panic("should not reach here")
 }
 
 func (i *iter) nextSecondary() int {
