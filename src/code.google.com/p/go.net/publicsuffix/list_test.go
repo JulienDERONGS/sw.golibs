@@ -99,19 +99,18 @@ var publicSuffixTestCases = []struct {
 	{"www.xxx.yyy.zzz.pb.ao", "pb.ao"},
 
 	// The .ar rules are:
-	// *.ar
-	// !congresodelalengua3.ar
-	// !educ.ar
-	// !gobiernoelectronico.ar
-	// !mecon.ar
-	// !nacion.ar
-	// !nic.ar
-	// !promocion.ar
-	// !retina.ar
-	// !uba.ar
+	// ar
+	// com.ar
+	// edu.ar
+	// gob.ar
+	// int.ar
+	// mil.ar
+	// net.ar
+	// org.ar
+	// tur.ar
 	// blogspot.com.ar
 	{"ar", "ar"},
-	{"www.ar", "www.ar"},
+	{"www.ar", "ar"},
 	{"nic.ar", "ar"},
 	{"www.nic.ar", "ar"},
 	{"com.ar", "com.ar"},
@@ -376,12 +375,12 @@ var eTLDPlusOneTestCases = []struct {
 	{"city.kobe.jp", "city.kobe.jp"},
 	{"www.city.kobe.jp", "city.kobe.jp"},
 	// TLD with a wildcard rule and exceptions.
-	{"om", ""},
-	{"test.om", ""},
-	{"b.test.om", "b.test.om"},
-	{"a.b.test.om", "b.test.om"},
-	{"songfest.om", "songfest.om"},
-	{"www.songfest.om", "songfest.om"},
+	{"ck", ""},
+	{"test.ck", ""},
+	{"b.test.ck", "b.test.ck"},
+	{"a.b.test.ck", "b.test.ck"},
+	{"www.ck", "www.ck"},
+	{"www.www.ck", "www.ck"},
 	// US K12.
 	{"us", ""},
 	{"test.us", "test.us"},
@@ -392,6 +391,16 @@ var eTLDPlusOneTestCases = []struct {
 	{"k12.ak.us", ""},
 	{"test.k12.ak.us", "test.k12.ak.us"},
 	{"www.test.k12.ak.us", "test.k12.ak.us"},
+	// Punycoded IDN labels
+	{"xn--85x722f.com.cn", "xn--85x722f.com.cn"},
+	{"xn--85x722f.xn--55qx5d.cn", "xn--85x722f.xn--55qx5d.cn"},
+	{"www.xn--85x722f.xn--55qx5d.cn", "xn--85x722f.xn--55qx5d.cn"},
+	{"shishi.xn--55qx5d.cn", "shishi.xn--55qx5d.cn"},
+	{"xn--55qx5d.cn", ""},
+	{"xn--85x722f.xn--fiqs8s", "xn--85x722f.xn--fiqs8s"},
+	{"www.xn--85x722f.xn--fiqs8s", "xn--85x722f.xn--fiqs8s"},
+	{"shishi.xn--fiqs8s", "shishi.xn--fiqs8s"},
+	{"xn--fiqs8s", ""},
 }
 
 func TestEffectiveTLDPlusOne(t *testing.T) {

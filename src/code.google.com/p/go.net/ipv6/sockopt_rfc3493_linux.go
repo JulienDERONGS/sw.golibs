@@ -13,5 +13,5 @@ func setIPv6Checksum(fd int, on bool, offset int) error {
 	if !on {
 		offset = -1
 	}
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolReserved, syscall.IPV6_CHECKSUM, offset))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolReserved, sysSockoptChecksum, offset))
 }
