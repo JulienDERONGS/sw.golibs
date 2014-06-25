@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build darwin freebsd linux netbsd openbsd
+// +build darwin dragonfly freebsd linux netbsd openbsd
 
 package ipv6
 
@@ -10,10 +10,11 @@ import (
 	"net"
 	"os"
 	"syscall"
+	"unsafe"
 )
 
 func ipv6TrafficClass(fd int) (int, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_TCLASS)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptTrafficClass)
 	if err != nil {
 		return 0, os.NewSyscallError("getsockopt", err)
 	}
@@ -21,11 +22,11 @@ func ipv6TrafficClass(fd int) (int, error) {
 }
 
 func setIPv6TrafficClass(fd, v int) error {
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_TCLASS, v))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, sysSockoptTrafficClass, v))
 }
 
 func ipv6HopLimit(fd int) (int, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_UNICAST_HOPS)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptUnicastHopLimit)
 	if err != nil {
 		return 0, os.NewSyscallError("getsockopt", err)
 	}
@@ -33,11 +34,11 @@ func ipv6HopLimit(fd int) (int, error) {
 }
 
 func setIPv6HopLimit(fd, v int) error {
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_UNICAST_HOPS, v))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, sysSockoptUnicastHopLimit, v))
 }
 
 func ipv6Checksum(fd int) (bool, int, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_CHECKSUM)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptChecksum)
 	if err != nil {
 		return false, 0, os.NewSyscallError("getsockopt", err)
 	}
@@ -49,7 +50,7 @@ func ipv6Checksum(fd int) (bool, int, error) {
 }
 
 func ipv6MulticastHopLimit(fd int) (int, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_HOPS)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastHopLimit)
 	if err != nil {
 		return 0, os.NewSyscallError("getsockopt", err)
 	}
@@ -57,11 +58,11 @@ func ipv6MulticastHopLimit(fd int) (int, error) {
 }
 
 func setIPv6MulticastHopLimit(fd, v int) error {
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_HOPS, v))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastHopLimit, v))
 }
 
 func ipv6MulticastInterface(fd int) (*net.Interface, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_IF)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastInterface)
 	if err != nil {
 		return nil, os.NewSyscallError("getsockopt", err)
 	}
@@ -80,11 +81,11 @@ func setIPv6MulticastInterface(fd int, ifi *net.Interface) error {
 	if ifi != nil {
 		v = ifi.Index
 	}
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_IF, v))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastInterface, v))
 }
 
 func ipv6MulticastLoopback(fd int) (bool, error) {
-	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_LOOP)
+	v, err := syscall.GetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastLoopback)
 	if err != nil {
 		return false, os.NewSyscallError("getsockopt", err)
 	}
@@ -92,23 +93,23 @@ func ipv6MulticastLoopback(fd int) (bool, error) {
 }
 
 func setIPv6MulticastLoopback(fd int, v bool) error {
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, syscall.IPV6_MULTICAST_LOOP, boolint(v)))
+	return os.NewSyscallError("setsockopt", syscall.SetsockoptInt(fd, ianaProtocolIPv6, sysSockoptMulticastLoopback, boolint(v)))
 }
 
 func joinIPv6Group(fd int, ifi *net.Interface, grp net.IP) error {
-	mreq := syscall.IPv6Mreq{}
-	copy(mreq.Multiaddr[:], grp)
+	mreq := sysMulticastReq{}
+	copy(mreq.IP[:], grp)
 	if ifi != nil {
-		mreq.Interface = uint32(ifi.Index)
+		mreq.IfIndex = uint32(ifi.Index)
 	}
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptIPv6Mreq(fd, ianaProtocolIPv6, syscall.IPV6_JOIN_GROUP, &mreq))
+	return os.NewSyscallError("setsockopt", setsockopt(fd, ianaProtocolIPv6, sysSockoptJoinGroup, unsafe.Pointer(&mreq), sysSizeofMulticastReq))
 }
 
 func leaveIPv6Group(fd int, ifi *net.Interface, grp net.IP) error {
-	mreq := syscall.IPv6Mreq{}
-	copy(mreq.Multiaddr[:], grp)
+	mreq := sysMulticastReq{}
+	copy(mreq.IP[:], grp)
 	if ifi != nil {
-		mreq.Interface = uint32(ifi.Index)
+		mreq.IfIndex = uint32(ifi.Index)
 	}
-	return os.NewSyscallError("setsockopt", syscall.SetsockoptIPv6Mreq(fd, ianaProtocolIPv6, syscall.IPV6_LEAVE_GROUP, &mreq))
+	return os.NewSyscallError("setsockopt", setsockopt(fd, ianaProtocolIPv6, sysSockoptLeaveGroup, unsafe.Pointer(&mreq), sysSizeofMulticastReq))
 }

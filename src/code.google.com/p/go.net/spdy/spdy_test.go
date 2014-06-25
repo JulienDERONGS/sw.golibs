@@ -9,6 +9,7 @@ import (
 	"compress/zlib"
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
@@ -611,6 +612,24 @@ var streamIdZeroFrames = map[string]zeroStream{
 
 func TestNoZeroStreamId(t *testing.T) {
 	t.Log("skipping") // TODO: update to work with SPDY3
+	return
+
+	for name, f := range streamIdZeroFrames {
+		b, err := base64.StdEncoding.DecodeString(f.encoded)
+		if err != nil {
+			t.Errorf("Unable to decode base64 encoded frame %s: %v", f, err)
+			continue
+		}
+		framer, err := NewFramer(ioutil.Discard, bytes.NewReader(b))
+		if err != nil {
+			t.Fatalf("NewFramer: %v", err)
+		}
+		err = framer.WriteFrame(f.frame)
+		checkZeroStreamId(t, name, "WriteFrame", err)
+
+		_, err = framer.ReadFrame()
+		checkZeroStreamId(t, name, "ReadFrame", err)
+	}
 }
 
 func checkZeroStreamId(t *testing.T, frame string, method string, err error) {

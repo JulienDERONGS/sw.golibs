@@ -56,8 +56,8 @@ func slicePacket(b []byte) (h, p []byte, err error) {
 // WriteTo writes an IPv4 datagram through the endpoint c, copying the
 // datagram from the IPv4 header h and the payload p.  The control
 // message cm allows the datagram path and the outgoing interface to be
-// specified.  Currently only Linux supports this.  The cm may be nil
-// if control of the outgoing datagram is not required.
+// specified.  Currently only Darwin and Linux support this.  The cm
+// may be nil if control of the outgoing datagram is not required.
 //
 // The IPv4 header h must contain appropriate fields that include:
 //
@@ -72,7 +72,7 @@ func slicePacket(b []byte) (h, p []byte, err error) {
 //	Checksum      = platform sets an appropriate value if Checksum is zero
 //	Src           = platform sets an appropriate value if Src is nil
 //	Dst           = <must be specified>
-//	h.Options     = optional
+//	Options       = optional
 func (c *packetHandler) WriteTo(h *Header, p []byte, cm *ControlMessage) error {
 	if !c.ok() {
 		return syscall.EINVAL

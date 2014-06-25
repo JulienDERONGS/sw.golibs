@@ -6,6 +6,7 @@ package html
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strconv"
 	"strings"
@@ -32,6 +33,9 @@ const (
 	// A DoctypeToken looks like <!DOCTYPE x>
 	DoctypeToken
 )
+
+// ErrBufferExceeded means that the buffering limit was exceeded.
+var ErrBufferExceeded = errors.New("max buffer exceeded")
 
 // String returns a string representation of the TokenType.
 func (t TokenType) String() string {
@@ -142,6 +146,8 @@ type Tokenizer struct {
 	// buf[raw.end:] is buffered input that will yield future tokens.
 	raw span
 	buf []byte
+	// maxBuf limits the data buffered in buf. A value of 0 means unlimited.
+	maxBuf int
 	// buf[data.start:data.end] holds the raw bytes of the current token's data:
 	// a text token's text, a tag token's tag name, etc.
 	data span
@@ -273,7 +279,16 @@ func (z *Tokenizer) readByte() byte {
 	}
 	x := z.buf[z.raw.end]
 	z.raw.end++
+	if z.maxBuf > 0 && z.raw.end-z.raw.start >= z.maxBuf {
+		z.err = ErrBufferExceeded
+		return 0
+	}
 	return x
+}
+
+// Buffered returns a slice containing data buffered but not yet tokenized.
+func (z *Tokenizer) Buffered() []byte {
+	return z.buf[z.raw.end:]
 }
 
 // readAtLeastOneByte wraps an io.Reader so that reading cannot return (0, nil).
@@ -933,13 +948,13 @@ func (z *Tokenizer) readTagAttrVal() {
 
 // Next scans the next token and returns its type.
 func (z *Tokenizer) Next() TokenType {
+	z.raw.start = z.raw.end
+	z.data.start = z.raw.end
+	z.data.end = z.raw.end
 	if z.err != nil {
 		z.tt = ErrorToken
 		return z.tt
 	}
-	z.raw.start = z.raw.end
-	z.data.start = z.raw.end
-	z.data.end = z.raw.end
 	if z.rawTag != "" {
 		if z.rawTag == "plaintext" {
 			// Read everything up to EOF.
@@ -987,6 +1002,8 @@ loop:
 			// "<!DOCTYPE declarations>" and "<?xml processing instructions?>".
 			tokenType = CommentToken
 		default:
+			// Reconsume the current character.
+			z.raw.end--
 			continue
 		}
 
@@ -1009,12 +1026,11 @@ loop:
 				break loop
 			}
 			if c == '>' {
-				// "</>" does not generate a token at all.
+				// "</>" does not generate a token at all. Generate an empty comment
+				// to allow passthrough clients to pick up the data using Raw.
 				// Reset the tokenizer state and start again.
-				z.raw.start = z.raw.end
-				z.data.start = z.raw.end
-				z.data.end = z.raw.end
-				continue loop
+				z.tt = CommentToken
+				return z.tt
 			}
 			if 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' {
 				z.readTag(false)
@@ -1168,6 +1184,12 @@ func (z *Tokenizer) Token() Token {
 	return t
 }
 
+// SetMaxBuf sets a limit on the amount of data buffered during tokenization.
+// A value of 0 means unlimited.
+func (z *Tokenizer) SetMaxBuf(n int) {
+	z.maxBuf = n
+}
+
 // NewTokenizer returns a new HTML Tokenizer for the given Reader.
 // The input is assumed to be UTF-8 encoded.
 func NewTokenizer(r io.Reader) *Tokenizer {
@@ -1175,7 +1197,7 @@ func NewTokenizer(r io.Reader) *Tokenizer {
 }
 
 // NewTokenizerFragment returns a new HTML Tokenizer for the given Reader, for
-// tokenizing an exisitng element's InnerHTML fragment. contextTag is that
+// tokenizing an existing element's InnerHTML fragment. contextTag is that
 // element's tag, such as "div" or "iframe".
 //
 // For example, how the InnerHTML "a<b" is tokenized depends on whether it is
