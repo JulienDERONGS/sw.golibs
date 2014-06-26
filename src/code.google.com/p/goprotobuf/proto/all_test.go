@@ -34,6 +34,7 @@ package proto_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -394,6 +395,63 @@ func TestNumericPrimitives(t *testing.T) {
 	}
 }
 
+// fakeMarshaler is a simple struct implementing Marshaler and Message interfaces.
+type fakeMarshaler struct {
+	b   []byte
+	err error
+}
+
+func (f fakeMarshaler) Marshal() ([]byte, error) {
+	return f.b, f.err
+}
+
+func (f fakeMarshaler) String() string {
+	return fmt.Sprintf("Bytes: %v Error: %v", f.b, f.err)
+}
+
+func (f fakeMarshaler) ProtoMessage() {}
+
+func (f fakeMarshaler) Reset() {}
+
+// Simple tests for proto messages that implement the Marshaler interface.
+func TestMarshalerEncoding(t *testing.T) {
+	tests := []struct {
+		name    string
+		m       Message
+		want    []byte
+		wantErr error
+	}{
+		{
+			name: "Marshaler that fails",
+			m: fakeMarshaler{
+				err: errors.New("some marshal err"),
+				b:   []byte{5, 6, 7},
+			},
+			// Since there's an error, nothing should be written to buffer.
+			want:    nil,
+			wantErr: errors.New("some marshal err"),
+		},
+		{
+			name: "Marshaler that succeeds",
+			m: fakeMarshaler{
+				b: []byte{0, 1, 2, 3, 4, 127, 255},
+			},
+			want:    []byte{0, 1, 2, 3, 4, 127, 255},
+			wantErr: nil,
+		},
+	}
+	for _, test := range tests {
+		b := NewBuffer(nil)
+		err := b.Marshal(test.m)
+		if !reflect.DeepEqual(test.wantErr, err) {
+			t.Errorf("%s: got err %v wanted %v", test.name, err, test.wantErr)
+		}
+		if !reflect.DeepEqual(test.want, b.Bytes()) {
+			t.Errorf("%s: got bytes %v wanted %v", test.name, b.Bytes(), test.want)
+		}
+	}
+}
+
 // Simple tests for bytes
 func TestBytesPrimitives(t *testing.T) {
 	o := old()
@@ -431,7 +489,7 @@ func TestRequiredBit(t *testing.T) {
 	err := o.Marshal(pb)
 	if err == nil {
 		t.Error("did not catch missing required fields")
-	} else if strings.Index(err.Error(), "GoTest") < 0 {
+	} else if strings.Index(err.Error(), "Kind") < 0 {
 		t.Error("wrong error type:", err)
 	}
 }
@@ -1116,13 +1174,10 @@ func TestTypeMismatch(t *testing.T) {
 	// Now Unmarshal it to the wrong type.
 	pb2 := initGoTestField()
 	err := o.Unmarshal(pb2)
-	switch err {
-	case ErrWrongType:
-		// fine
-	case nil:
-		t.Error("expected wrong type error, got no error")
-	default:
-		t.Error("expected wrong type error, got", err)
+	if err == nil {
+		t.Error("expected error, got no error")
+	} else if !strings.Contains(err.Error(), "bad wiretype") {
+		t.Error("expected bad wiretype error, got", err)
 	}
 }
 
@@ -1158,7 +1213,7 @@ func TestPackedNonPackedDecoderSwitching(t *testing.T) {
 func TestProto1RepeatedGroup(t *testing.T) {
 	pb := &MessageList{
 		Message: []*MessageList_Message{
-			&MessageList_Message{
+			{
 				Name:  String("blah"),
 				Count: Int32(7),
 			},
@@ -1205,7 +1260,7 @@ func TestRequiredFieldEnforcement(t *testing.T) {
 	_, err := Marshal(pb)
 	if err == nil {
 		t.Error("marshal: expected error, got nil")
-	} else if strings.Index(err.Error(), "GoTestField") < 0 {
+	} else if strings.Index(err.Error(), "Label") < 0 {
 		t.Errorf("marshal: bad error type: %v", err)
 	}
 
@@ -1216,7 +1271,7 @@ func TestRequiredFieldEnforcement(t *testing.T) {
 	err = Unmarshal(buf, pb)
 	if err == nil {
 		t.Error("unmarshal: expected error, got nil")
-	} else if strings.Index(err.Error(), "GoTestField") < 0 {
+	} else if strings.Index(err.Error(), "{Unknown}") < 0 {
 		t.Errorf("unmarshal: bad error type: %v", err)
 	}
 }
@@ -1341,6 +1396,21 @@ func TestSetDefaultsWithSubMessage(t *testing.T) {
 	}
 }
 
+func TestSetDefaultsWithRepeatedSubMessage(t *testing.T) {
+	m := &MyMessage{
+		RepInner: []*InnerMessage{{}},
+	}
+	expected := &MyMessage{
+		RepInner: []*InnerMessage{{
+			Port: Int32(4000),
+		}},
+	}
+	SetDefaults(m)
+	if !Equal(m, expected) {
+		t.Errorf("\n got %v\nwant %v", m, expected)
+	}
+}
+
 func TestMaximumTagNumber(t *testing.T) {
 	m := &MaxTag{
 		LastField: String("natural goat essence"),
@@ -1367,7 +1437,7 @@ func TestJSON(t *testing.T) {
 		},
 		Bikeshed: MyMessage_GREEN.Enum(),
 	}
-	const expected = `{"count":4,"pet":["bunny","kitty"],"inner":{"host":"cauchy"},"bikeshed":"GREEN"}`
+	const expected = `{"count":4,"pet":["bunny","kitty"],"inner":{"host":"cauchy"},"bikeshed":1}`
 
 	b, err := json.Marshal(m)
 	if err != nil {
@@ -1386,8 +1456,8 @@ func TestJSON(t *testing.T) {
 		t.Fatalf("got %s, want %s", received, m)
 	}
 
-	// Test unmarshalling of older json wire format.
-	const old = `{"count":4,"pet":["bunny","kitty"],"inner":{"host":"cauchy"},"bikeshed":1}`
+	// Test unmarshalling of JSON with symbolic enum name.
+	const old = `{"count":4,"pet":["bunny","kitty"],"inner":{"host":"cauchy"},"bikeshed":"GREEN"}`
 	received.Reset()
 	if err := json.Unmarshal([]byte(old), received); err != nil {
 		t.Fatalf("json.Unmarshal failed: %v", err)
@@ -1411,6 +1481,20 @@ func TestBytesWithInvalidLength(t *testing.T) {
 	// If a byte sequence has an invalid (negative) length, Unmarshal should not panic.
 	b := []byte{2<<3 | WireBytes, 0xff, 0xff, 0xff, 0xff, 0xff, 0}
 	Unmarshal(b, new(MyMessage))
+}
+
+func TestLengthOverflow(t *testing.T) {
+	// Overflowing a length should not panic.
+	b := []byte{2<<3 | WireBytes, 1, 1, 3<<3 | WireBytes, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x01}
+	Unmarshal(b, new(MyMessage))
+}
+
+func TestVarintOverflow(t *testing.T) {
+	// Overflowing a 64-bit length should not be allowed.
+	b := []byte{1<<3 | WireVarint, 0x01, 3<<3 | WireBytes, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01}
+	if err := Unmarshal(b, new(MyMessage)); err == nil {
+		t.Fatalf("Overflowed uint64 length without error")
+	}
 }
 
 func TestUnmarshalFuzz(t *testing.T) {
@@ -1458,7 +1542,7 @@ func TestMergeMessages(t *testing.T) {
 }
 
 func TestExtensionMarshalOrder(t *testing.T) {
-	m := &MyMessage{Count: Int32(123)}
+	m := &MyMessage{Count: Int(123)}
 	if err := SetExtension(m, E_Ext_More, &Ext{Data: String("alpha")}); err != nil {
 		t.Fatalf("SetExtension: %v", err)
 	}
@@ -1471,7 +1555,7 @@ func TestExtensionMarshalOrder(t *testing.T) {
 
 	// Serialize m several times, and check we get the same bytes each time.
 	var orig []byte
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		b, err := Marshal(m)
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
@@ -1483,6 +1567,225 @@ func TestExtensionMarshalOrder(t *testing.T) {
 		if !bytes.Equal(b, orig) {
 			t.Errorf("Bytes differ on attempt #%d", i)
 		}
+	}
+}
+
+// Many extensions, because small maps might not iterate differently on each iteration.
+var exts = []*ExtensionDesc{
+	E_X201,
+	E_X202,
+	E_X203,
+	E_X204,
+	E_X205,
+	E_X206,
+	E_X207,
+	E_X208,
+	E_X209,
+	E_X210,
+	E_X211,
+	E_X212,
+	E_X213,
+	E_X214,
+	E_X215,
+	E_X216,
+	E_X217,
+	E_X218,
+	E_X219,
+	E_X220,
+	E_X221,
+	E_X222,
+	E_X223,
+	E_X224,
+	E_X225,
+	E_X226,
+	E_X227,
+	E_X228,
+	E_X229,
+	E_X230,
+	E_X231,
+	E_X232,
+	E_X233,
+	E_X234,
+	E_X235,
+	E_X236,
+	E_X237,
+	E_X238,
+	E_X239,
+	E_X240,
+	E_X241,
+	E_X242,
+	E_X243,
+	E_X244,
+	E_X245,
+	E_X246,
+	E_X247,
+	E_X248,
+	E_X249,
+	E_X250,
+}
+
+func TestMessageSetMarshalOrder(t *testing.T) {
+	m := &MyMessageSet{}
+	for _, x := range exts {
+		if err := SetExtension(m, x, &Empty{}); err != nil {
+			t.Fatalf("SetExtension: %v", err)
+		}
+	}
+
+	buf, err := Marshal(m)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	// Serialize m several times, and check we get the same bytes each time.
+	for i := 0; i < 10; i++ {
+		b1, err := Marshal(m)
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		if !bytes.Equal(b1, buf) {
+			t.Errorf("Bytes differ on re-Marshal #%d", i)
+		}
+
+		m2 := &MyMessageSet{}
+		if err := Unmarshal(buf, m2); err != nil {
+			t.Errorf("Unmarshal: %v", err)
+		}
+		b2, err := Marshal(m2)
+		if err != nil {
+			t.Errorf("re-Marshal: %v", err)
+		}
+		if !bytes.Equal(b2, buf) {
+			t.Errorf("Bytes differ on round-trip #%d", i)
+		}
+	}
+}
+
+func TestUnmarshalMergesMessages(t *testing.T) {
+	// If a nested message occurs twice in the input,
+	// the fields should be merged when decoding.
+	a := &OtherMessage{
+		Key: Int64(123),
+		Inner: &InnerMessage{
+			Host: String("polhode"),
+			Port: Int32(1234),
+		},
+	}
+	aData, err := Marshal(a)
+	if err != nil {
+		t.Fatalf("Marshal(a): %v", err)
+	}
+	b := &OtherMessage{
+		Weight: Float32(1.2),
+		Inner: &InnerMessage{
+			Host:      String("herpolhode"),
+			Connected: Bool(true),
+		},
+	}
+	bData, err := Marshal(b)
+	if err != nil {
+		t.Fatalf("Marshal(b): %v", err)
+	}
+	want := &OtherMessage{
+		Key:    Int64(123),
+		Weight: Float32(1.2),
+		Inner: &InnerMessage{
+			Host:      String("herpolhode"),
+			Port:      Int32(1234),
+			Connected: Bool(true),
+		},
+	}
+	got := new(OtherMessage)
+	if err := Unmarshal(append(aData, bData...), got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if !Equal(got, want) {
+		t.Errorf("\n got %v\nwant %v", got, want)
+	}
+}
+
+func TestEncodingSizes(t *testing.T) {
+	tests := []struct {
+		m Message
+		n int
+	}{
+		{&Defaults{F_Int32: Int32(math.MaxInt32)}, 6},
+		{&Defaults{F_Int32: Int32(math.MinInt32)}, 6},
+		{&Defaults{F_Uint32: Uint32(math.MaxUint32)}, 6},
+	}
+	for _, test := range tests {
+		b, err := Marshal(test.m)
+		if err != nil {
+			t.Errorf("Marshal(%v): %v", test.m, err)
+			continue
+		}
+		if len(b) != test.n {
+			t.Errorf("Marshal(%v) yielded %d bytes, want %d bytes", test.m, len(b), test.n)
+		}
+	}
+}
+
+func TestRequiredNotSetError(t *testing.T) {
+	pb := initGoTest(false)
+	pb.RequiredField.Label = nil
+	pb.F_Int32Required = nil
+	pb.F_Int64Required = nil
+
+	expected := "0807" + // field 1, encoding 0, value 7
+		"2206" + "120474797065" + // field 4, encoding 2 (GoTestField)
+		"5001" + // field 10, encoding 0, value 1
+		"6d20000000" + // field 13, encoding 5, value 0x20
+		"714000000000000000" + // field 14, encoding 1, value 0x40
+		"78a019" + // field 15, encoding 0, value 0xca0 = 3232
+		"8001c032" + // field 16, encoding 0, value 0x1940 = 6464
+		"8d0100004a45" + // field 17, encoding 5, value 3232.0
+		"9101000000000040b940" + // field 18, encoding 1, value 6464.0
+		"9a0106" + "737472696e67" + // field 19, encoding 2, string "string"
+		"b304" + // field 70, encoding 3, start group
+		"ba0408" + "7265717569726564" + // field 71, encoding 2, string "required"
+		"b404" + // field 70, encoding 4, end group
+		"aa0605" + "6279746573" + // field 101, encoding 2, string "bytes"
+		"b0063f" + // field 102, encoding 0, 0x3f zigzag32
+		"b8067f" // field 103, encoding 0, 0x7f zigzag64
+
+	o := old()
+	bytes, err := Marshal(pb)
+	if _, ok := err.(*RequiredNotSetError); !ok {
+		fmt.Printf("marshal-1 err = %v, want *RequiredNotSetError", err)
+		o.DebugPrint("", bytes)
+		t.Fatalf("expected = %s", expected)
+	}
+	if strings.Index(err.Error(), "RequiredField.Label") < 0 {
+		t.Errorf("marshal-1 wrong err msg: %v", err)
+	}
+	if !equal(bytes, expected, t) {
+		o.DebugPrint("neq 1", bytes)
+		t.Fatalf("expected = %s", expected)
+	}
+
+	// Now test Unmarshal by recreating the original buffer.
+	pbd := new(GoTest)
+	err = Unmarshal(bytes, pbd)
+	if _, ok := err.(*RequiredNotSetError); !ok {
+		t.Fatalf("unmarshal err = %v, want *RequiredNotSetError", err)
+		o.DebugPrint("", bytes)
+		t.Fatalf("string = %s", expected)
+	}
+	if strings.Index(err.Error(), "RequiredField.{Unknown}") < 0 {
+		t.Errorf("unmarshal wrong err msg: %v", err)
+	}
+	bytes, err = Marshal(pbd)
+	if _, ok := err.(*RequiredNotSetError); !ok {
+		t.Errorf("marshal-2 err = %v, want *RequiredNotSetError", err)
+		o.DebugPrint("", bytes)
+		t.Fatalf("string = %s", expected)
+	}
+	if strings.Index(err.Error(), "RequiredField.Label") < 0 {
+		t.Errorf("marshal-2 wrong err msg: %v", err)
+	}
+	if !equal(bytes, expected, t) {
+		o.DebugPrint("neq 2", bytes)
+		t.Fatalf("string = %s", expected)
 	}
 }
 
@@ -1499,78 +1802,122 @@ func fuzzUnmarshal(t *testing.T, data []byte) {
 	Unmarshal(data, pb)
 }
 
-func benchmarkMsg(bytes bool) *GoTest {
+// Benchmarks
+
+func testMsg() *GoTest {
 	pb := initGoTest(true)
-	if bytes {
-		buf := make([]byte, 4000)
-		for i := range buf {
-			buf[i] = byte(i)
-		}
-		pb.F_BytesDefaulted = buf
-	} else {
-		const N = 1000 // Internally the library starts much smaller.
-		pb.F_Int32Repeated = make([]int32, N)
-		pb.F_DoubleRepeated = make([]float64, N)
-		for i := 0; i < N; i++ {
-			pb.F_Int32Repeated[i] = int32(i)
-			pb.F_DoubleRepeated[i] = float64(i)
-		}
+	const N = 1000 // Internally the library starts much smaller.
+	pb.F_Int32Repeated = make([]int32, N)
+	pb.F_DoubleRepeated = make([]float64, N)
+	for i := 0; i < N; i++ {
+		pb.F_Int32Repeated[i] = int32(i)
+		pb.F_DoubleRepeated[i] = float64(i)
 	}
 	return pb
 }
 
-func BenchmarkMarshal(b *testing.B) {
-	pb := benchmarkMsg(false)
+func bytesMsg() *GoTest {
+	pb := initGoTest(true)
+	buf := make([]byte, 4000)
+	for i := range buf {
+		buf[i] = byte(i)
+	}
+	pb.F_BytesDefaulted = buf
+	return pb
+}
+
+func benchmarkMarshal(b *testing.B, pb Message, marshal func(Message) ([]byte, error)) {
+	d, _ := marshal(pb)
+	b.SetBytes(int64(len(d)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		marshal(pb)
+	}
+}
+
+func benchmarkBufferMarshal(b *testing.B, pb Message) {
 	p := NewBuffer(nil)
+	benchmarkMarshal(b, pb, func(pb0 Message) ([]byte, error) {
+		p.Reset()
+		err := p.Marshal(pb0)
+		return p.Bytes(), err
+	})
+}
+
+func benchmarkSize(b *testing.B, pb Message) {
+	benchmarkMarshal(b, pb, func(pb0 Message) ([]byte, error) {
+		Size(pb)
+		return nil, nil
+	})
+}
+
+func newOf(pb Message) Message {
+	in := reflect.ValueOf(pb)
+	if in.IsNil() {
+		return pb
+	}
+	return reflect.New(in.Type().Elem()).Interface().(Message)
+}
+
+func benchmarkUnmarshal(b *testing.B, pb Message, unmarshal func([]byte, Message) error) {
+	d, _ := Marshal(pb)
+	b.SetBytes(int64(len(d)))
+	pbd := newOf(pb)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		p.Reset()
-		p.Marshal(pb)
+		unmarshal(d, pbd)
 	}
-	b.SetBytes(int64(len(p.Bytes())))
+}
+
+func benchmarkBufferUnmarshal(b *testing.B, pb Message) {
+	p := NewBuffer(nil)
+	benchmarkUnmarshal(b, pb, func(d []byte, pb0 Message) error {
+		p.SetBuf(d)
+		return p.Unmarshal(pb0)
+	})
+}
+
+// Benchmark{Marshal,BufferMarshal,Size,Unmarshal,BufferUnmarshal}{,Bytes}
+
+func BenchmarkMarshal(b *testing.B) {
+	benchmarkMarshal(b, testMsg(), Marshal)
+}
+
+func BenchmarkBufferMarshal(b *testing.B) {
+	benchmarkBufferMarshal(b, testMsg())
+}
+
+func BenchmarkSize(b *testing.B) {
+	benchmarkSize(b, testMsg())
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
-	pb := benchmarkMsg(false)
-	p := NewBuffer(nil)
-	p.Marshal(pb)
-	b.SetBytes(int64(len(p.Bytes())))
-	p2 := NewBuffer(nil)
-	pbd := new(GoTest)
+	benchmarkUnmarshal(b, testMsg(), Unmarshal)
+}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		p2.SetBuf(p.Bytes())
-		p2.Unmarshal(pbd)
-	}
+func BenchmarkBufferUnmarshal(b *testing.B) {
+	benchmarkBufferUnmarshal(b, testMsg())
 }
 
 func BenchmarkMarshalBytes(b *testing.B) {
-	pb := benchmarkMsg(true)
-	p := NewBuffer(nil)
+	benchmarkMarshal(b, bytesMsg(), Marshal)
+}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		p.Reset()
-		p.Marshal(pb)
-	}
-	b.SetBytes(int64(len(p.Bytes())))
+func BenchmarkBufferMarshalBytes(b *testing.B) {
+	benchmarkBufferMarshal(b, bytesMsg())
+}
+
+func BenchmarkSizeBytes(b *testing.B) {
+	benchmarkSize(b, bytesMsg())
 }
 
 func BenchmarkUnmarshalBytes(b *testing.B) {
-	pb := benchmarkMsg(true)
-	p := NewBuffer(nil)
-	p.Marshal(pb)
-	b.SetBytes(int64(len(p.Bytes())))
-	p2 := NewBuffer(nil)
-	pbd := new(GoTest)
+	benchmarkUnmarshal(b, bytesMsg(), Unmarshal)
+}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		p2.SetBuf(p.Bytes())
-		p2.Unmarshal(pbd)
-	}
+func BenchmarkBufferUnmarshalBytes(b *testing.B) {
+	benchmarkBufferUnmarshal(b, bytesMsg())
 }
 
 func BenchmarkUnmarshalUnrecognizedFields(b *testing.B) {

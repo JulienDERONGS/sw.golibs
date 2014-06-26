@@ -35,6 +35,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"math"
 	"strings"
 	"testing"
 
@@ -42,6 +43,26 @@ import (
 
 	pb "./testdata"
 )
+
+// textMessage implements the methods that allow it to marshal and unmarshal
+// itself as text.
+type textMessage struct {
+}
+
+func (*textMessage) MarshalText() ([]byte, error) {
+	return []byte("custom"), nil
+}
+
+func (*textMessage) UnmarshalText(bytes []byte) error {
+	if string(bytes) != "custom" {
+		return errors.New("expected 'custom'")
+	}
+	return nil
+}
+
+func (*textMessage) Reset()         {}
+func (*textMessage) String() string { return "" }
+func (*textMessage) ProtoMessage()  {}
 
 func newTestMessage() *pb.MyMessage {
 	msg := &pb.MyMessage{
@@ -128,7 +149,7 @@ SomeGroup {
   group_field: 8
 }
 /* 2 unknown bytes */
-tag13: 4
+13: 4
 [testdata.Ext.more]: <
   data: "Big gobs for big rats"
 >
@@ -136,9 +157,9 @@ tag13: 4
 [testdata.greeting]: "easy"
 [testdata.greeting]: "cow"
 /* 13 unknown bytes */
-tag201: "\t3G skiing"
+201: "\t3G skiing"
 /* 3 unknown bytes */
-tag202: 19
+202: 19
 `
 
 func TestMarshalText(t *testing.T) {
@@ -152,6 +173,16 @@ func TestMarshalText(t *testing.T) {
 	}
 }
 
+func TestMarshalTextCustomMessage(t *testing.T) {
+	buf := new(bytes.Buffer)
+	if err := proto.MarshalText(buf, &textMessage{}); err != nil {
+		t.Fatalf("proto.MarshalText: %v", err)
+	}
+	s := buf.String()
+	if s != "custom" {
+		t.Errorf("Got %q, expected %q", s, "custom")
+	}
+}
 func TestMarshalTextNil(t *testing.T) {
 	want := "<nil>"
 	tests := []proto.Message{nil, (*pb.MyMessage)(nil)}
@@ -163,6 +194,16 @@ func TestMarshalTextNil(t *testing.T) {
 		if got := buf.String(); got != want {
 			t.Errorf("%d: got %q want %q", i, got, want)
 		}
+	}
+}
+
+func TestMarshalTextUnknownEnum(t *testing.T) {
+	// The Color enum only specifies values 0-2.
+	m := &pb.MyMessage{Bikeshed: pb.MyMessage_Color(3).Enum()}
+	got := m.String()
+	const want = `bikeshed:3 `
+	if got != want {
+		t.Errorf("\n got %q\nwant %q", got, want)
 	}
 }
 
@@ -292,7 +333,7 @@ type limitedWriter struct {
 	limit int
 }
 
-var outOfSpace = errors.New("insufficient space")
+var outOfSpace = errors.New("proto: insufficient space")
 
 func (w *limitedWriter) Write(p []byte) (n int, err error) {
 	var avail = w.limit - w.b.Len()
@@ -321,5 +362,47 @@ func TestMarshalTextFailing(t *testing.T) {
 		if s != x {
 			t.Errorf("Got:\n===\n%v===\nExpected:\n===\n%v===\n", s, x)
 		}
+	}
+}
+
+func TestFloats(t *testing.T) {
+	tests := []struct {
+		f    float64
+		want string
+	}{
+		{0, "0"},
+		{4.7, "4.7"},
+		{math.Inf(1), "inf"},
+		{math.Inf(-1), "-inf"},
+		{math.NaN(), "nan"},
+	}
+	for _, test := range tests {
+		msg := &pb.FloatingPoint{F: &test.f}
+		got := strings.TrimSpace(msg.String())
+		want := `f:` + test.want
+		if got != want {
+			t.Errorf("f=%f: got %q, want %q", test.f, got, want)
+		}
+	}
+}
+
+func TestRepeatedNilText(t *testing.T) {
+	m := &pb.MessageList{
+		Message: []*pb.MessageList_Message{
+			nil,
+			&pb.MessageList_Message{
+				Name: proto.String("Horse"),
+			},
+			nil,
+		},
+	}
+	want := `Message <nil>
+Message {
+  name: "Horse"
+}
+Message <nil>
+`
+	if s := proto.MarshalTextString(m); s != want {
+		t.Errorf(" got: %s\nwant: %s", s, want)
 	}
 }

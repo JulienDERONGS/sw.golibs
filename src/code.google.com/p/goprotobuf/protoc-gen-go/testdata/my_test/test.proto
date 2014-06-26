@@ -40,13 +40,16 @@ enum HatType {
   FEZ = 2;
 }
 
+// This enum represents days of the week.
 enum Days {
+  option allow_alias = true;
 
   MONDAY = 1;
   TUESDAY = 2;
   LUNDI = 1;  // same value as MONDAY
 }
 
+// This is a message that might be sent somewhere.
 message Request {
   enum Color {
     RED = 0;
@@ -55,7 +58,7 @@ message Request {
   }
   repeated int64 key = 1;
 //  optional imp.ImportedMessage imported_message = 2;
-  optional Color hue = 3;
+  optional Color hue = 3; // no default
   optional HatType hat = 4 [default=FEDORA];
 //  optional imp.ImportedMessage.Owner owner = 6;
   optional float deadline = 7 [default=inf];
@@ -63,9 +66,10 @@ message Request {
     optional int32 group_field = 9;
   }
 
-  // This foreign message type is in imp2.proto,
+  // These foreign types are in imp2.proto,
   // which is publicly imported by imp.proto.
 //  optional imp.PubliclyImportedMessage pub = 10;
+//  optional imp.PubliclyImportedEnum pub_enum = 13 [default=HAIR];
 
 
   optional int32 reset = 12;

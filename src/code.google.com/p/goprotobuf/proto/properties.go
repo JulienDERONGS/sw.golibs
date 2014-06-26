@@ -59,13 +59,22 @@ const (
 
 const startSize = 10 // initial slice/string sizes
 
-// Encoders are defined in encoder.go
+// Encoders are defined in encode.go
 // An encoder outputs the full representation of a field, including its
 // tag and encoder type.
 type encoder func(p *Buffer, prop *Properties, base structPointer) error
 
 // A valueEncoder encodes a single integer in a particular encoding.
 type valueEncoder func(o *Buffer, x uint64) error
+
+// Sizers are defined in encode.go
+// A sizer returns the encoded size of a field, including its tag and encoder
+// type.
+type sizer func(prop *Properties, base structPointer) int
+
+// A valueSizer returns the encoded size of a single integer in a particular
+// encoding.
+type valueSizer func(x uint64) int
 
 // Decoders are defined in decode.go
 // A decoder creates a value from its wire representation.
@@ -126,7 +135,7 @@ type StructProperties struct {
 }
 
 // Implement the sorting interface so we can sort the fields in tag order, as recommended by the spec.
-// See encoder.go, (*Buffer).enc_struct.
+// See encode.go, (*Buffer).enc_struct.
 
 func (sp *StructProperties) Len() int { return len(sp.order) }
 func (sp *StructProperties) Less(i, j int) bool {
@@ -158,6 +167,9 @@ type Properties struct {
 	sprop         *StructProperties // set for struct types only
 	isMarshaler   bool
 	isUnmarshaler bool
+
+	size    sizer
+	valSize valueSizer // set for bool and numeric types only
 
 	dec    decoder
 	valDec valueDecoder // set for bool and numeric types only
@@ -210,22 +222,27 @@ func (p *Properties) Parse(s string) {
 		p.WireType = WireVarint
 		p.valEnc = (*Buffer).EncodeVarint
 		p.valDec = (*Buffer).DecodeVarint
+		p.valSize = sizeVarint
 	case "fixed32":
 		p.WireType = WireFixed32
 		p.valEnc = (*Buffer).EncodeFixed32
 		p.valDec = (*Buffer).DecodeFixed32
+		p.valSize = sizeFixed32
 	case "fixed64":
 		p.WireType = WireFixed64
 		p.valEnc = (*Buffer).EncodeFixed64
 		p.valDec = (*Buffer).DecodeFixed64
+		p.valSize = sizeFixed64
 	case "zigzag32":
 		p.WireType = WireVarint
 		p.valEnc = (*Buffer).EncodeZigzag32
 		p.valDec = (*Buffer).DecodeZigzag32
+		p.valSize = sizeZigzag32
 	case "zigzag64":
 		p.WireType = WireVarint
 		p.valEnc = (*Buffer).EncodeZigzag64
 		p.valDec = (*Buffer).DecodeZigzag64
+		p.valSize = sizeZigzag64
 	case "bytes", "group":
 		p.WireType = WireBytes
 		// no numeric converter for non-numeric types
@@ -252,14 +269,14 @@ func (p *Properties) Parse(s string) {
 		case f == "packed":
 			p.Packed = true
 		case strings.HasPrefix(f, "name="):
-			p.OrigName = f[5:len(f)]
+			p.OrigName = f[5:]
 		case strings.HasPrefix(f, "enum="):
-			p.Enum = f[5:len(f)]
+			p.Enum = f[5:]
 		case strings.HasPrefix(f, "def="):
-			p.Default = f[4:len(f)] // rest of string
+			p.Default = f[4:] // rest of string
 			if i+1 < len(fields) {
 				// Commas aren't escaped, and def is always last.
-				p.Default += "," + strings.Join(fields[i+1:len(fields)], ",")
+				p.Default += "," + strings.Join(fields[i+1:], ",")
 				break
 			}
 		}
@@ -276,6 +293,7 @@ var protoMessageType = reflect.TypeOf((*Message)(nil)).Elem()
 func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 	p.enc = nil
 	p.dec = nil
+	p.size = nil
 
 	switch t1 := typ; t1.Kind() {
 	default:
@@ -289,21 +307,27 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 		case reflect.Bool:
 			p.enc = (*Buffer).enc_bool
 			p.dec = (*Buffer).dec_bool
+			p.size = size_bool
 		case reflect.Int32, reflect.Uint32:
 			p.enc = (*Buffer).enc_int32
 			p.dec = (*Buffer).dec_int32
+			p.size = size_int32
 		case reflect.Int64, reflect.Uint64:
 			p.enc = (*Buffer).enc_int64
 			p.dec = (*Buffer).dec_int64
+			p.size = size_int64
 		case reflect.Float32:
 			p.enc = (*Buffer).enc_int32 // can just treat them as bits
 			p.dec = (*Buffer).dec_int32
+			p.size = size_int32
 		case reflect.Float64:
 			p.enc = (*Buffer).enc_int64 // can just treat them as bits
 			p.dec = (*Buffer).dec_int64
+			p.size = size_int64
 		case reflect.String:
 			p.enc = (*Buffer).enc_string
 			p.dec = (*Buffer).dec_string
+			p.size = size_string
 		case reflect.Struct:
 			p.stype = t1.Elem()
 			p.isMarshaler = isMarshaler(t1)
@@ -311,9 +335,11 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 			if p.Wire == "bytes" {
 				p.enc = (*Buffer).enc_struct_message
 				p.dec = (*Buffer).dec_struct_message
+				p.size = size_struct_message
 			} else {
 				p.enc = (*Buffer).enc_struct_group
 				p.dec = (*Buffer).dec_struct_group
+				p.size = size_struct_group
 			}
 		}
 
@@ -325,8 +351,10 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 		case reflect.Bool:
 			if p.Packed {
 				p.enc = (*Buffer).enc_slice_packed_bool
+				p.size = size_slice_packed_bool
 			} else {
 				p.enc = (*Buffer).enc_slice_bool
+				p.size = size_slice_bool
 			}
 			p.dec = (*Buffer).dec_slice_bool
 			p.packedDec = (*Buffer).dec_slice_packed_bool
@@ -335,16 +363,20 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 			case 32:
 				if p.Packed {
 					p.enc = (*Buffer).enc_slice_packed_int32
+					p.size = size_slice_packed_int32
 				} else {
 					p.enc = (*Buffer).enc_slice_int32
+					p.size = size_slice_int32
 				}
 				p.dec = (*Buffer).dec_slice_int32
 				p.packedDec = (*Buffer).dec_slice_packed_int32
 			case 64:
 				if p.Packed {
 					p.enc = (*Buffer).enc_slice_packed_int64
+					p.size = size_slice_packed_int64
 				} else {
 					p.enc = (*Buffer).enc_slice_int64
+					p.size = size_slice_int64
 				}
 				p.dec = (*Buffer).dec_slice_int64
 				p.packedDec = (*Buffer).dec_slice_packed_int64
@@ -352,6 +384,7 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 				if t2.Kind() == reflect.Uint8 {
 					p.enc = (*Buffer).enc_slice_byte
 					p.dec = (*Buffer).dec_slice_byte
+					p.size = size_slice_byte
 				}
 			default:
 				logNoSliceEnc(t1, t2)
@@ -363,8 +396,10 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 				// can just treat them as bits
 				if p.Packed {
 					p.enc = (*Buffer).enc_slice_packed_int32
+					p.size = size_slice_packed_int32
 				} else {
 					p.enc = (*Buffer).enc_slice_int32
+					p.size = size_slice_int32
 				}
 				p.dec = (*Buffer).dec_slice_int32
 				p.packedDec = (*Buffer).dec_slice_packed_int32
@@ -372,8 +407,10 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 				// can just treat them as bits
 				if p.Packed {
 					p.enc = (*Buffer).enc_slice_packed_int64
+					p.size = size_slice_packed_int64
 				} else {
 					p.enc = (*Buffer).enc_slice_int64
+					p.size = size_slice_int64
 				}
 				p.dec = (*Buffer).dec_slice_int64
 				p.packedDec = (*Buffer).dec_slice_packed_int64
@@ -384,6 +421,7 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 		case reflect.String:
 			p.enc = (*Buffer).enc_slice_string
 			p.dec = (*Buffer).dec_slice_string
+			p.size = size_slice_string
 		case reflect.Ptr:
 			switch t3 := t2.Elem(); t3.Kind() {
 			default:
@@ -393,11 +431,14 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 				p.stype = t2.Elem()
 				p.isMarshaler = isMarshaler(t2)
 				p.isUnmarshaler = isUnmarshaler(t2)
-				p.enc = (*Buffer).enc_slice_struct_group
-				p.dec = (*Buffer).dec_slice_struct_group
 				if p.Wire == "bytes" {
 					p.enc = (*Buffer).enc_slice_struct_message
 					p.dec = (*Buffer).dec_slice_struct_message
+					p.size = size_slice_struct_message
+				} else {
+					p.enc = (*Buffer).enc_slice_struct_group
+					p.dec = (*Buffer).dec_slice_struct_group
+					p.size = size_slice_struct_group
 				}
 			}
 		case reflect.Slice:
@@ -408,6 +449,7 @@ func (p *Properties) setEncAndDec(typ reflect.Type, lockGetProp bool) {
 			case reflect.Uint8:
 				p.enc = (*Buffer).enc_slice_slice_byte
 				p.dec = (*Buffer).dec_slice_slice_byte
+				p.size = size_slice_slice_byte
 			}
 		}
 	}
@@ -515,13 +557,17 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 	prop.unrecField = invalidField
 	prop.Prop = make([]*Properties, t.NumField())
 	prop.order = make([]int, t.NumField())
+
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		p := new(Properties)
-		p.init(f.Type, f.Name, f.Tag.Get("protobuf"), &f, false)
+		name := f.Name
+		p.init(f.Type, name, f.Tag.Get("protobuf"), &f, false)
+
 		if f.Name == "XXX_extensions" { // special case
 			p.enc = (*Buffer).enc_map
 			p.dec = nil // not needed
+			p.size = size_map
 		}
 		if f.Name == "XXX_unrecognized" { // special case
 			prop.unrecField = toField(&f)
@@ -591,15 +637,13 @@ func getbase(pb Message) (t reflect.Type, b structPointer, err error) {
 // A global registry of enum types.
 // The generated code will register the generated maps by calling RegisterEnum.
 
-var enumNameMaps = make(map[string]map[int32]string)
 var enumValueMaps = make(map[string]map[string]int32)
 
 // RegisterEnum is called from the generated code to install the enum descriptor
-// maps into the global table to aid parsing ASCII protocol buffers.
-func RegisterEnum(typeName string, nameMap map[int32]string, valueMap map[string]int32) {
-	if _, ok := enumNameMaps[typeName]; ok {
+// maps into the global table to aid parsing text format protocol buffers.
+func RegisterEnum(typeName string, unusedNameMap map[int32]string, valueMap map[string]int32) {
+	if _, ok := enumValueMaps[typeName]; ok {
 		panic("proto: duplicate enum registered: " + typeName)
 	}
-	enumNameMaps[typeName] = nameMap
 	enumValueMaps[typeName] = valueMap
 }
