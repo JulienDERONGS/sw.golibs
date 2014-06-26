@@ -223,6 +223,7 @@ type Stats struct {
 	Decode  uint64 // number of decodes
 	Chit    uint64 // number of cache hits
 	Cmiss   uint64 // number of cache misses
+	Size    uint64 // number of sizes
 }
 
 // Set to true to enable stats collection.
@@ -239,10 +240,8 @@ func GetStats() Stats { return stats }
 // the global functions Marshal and Unmarshal create a
 // temporary Buffer and are fine for most applications.
 type Buffer struct {
-	buf       []byte     // encode/decode byte stream
-	index     int        // write point
-	freelist  [10][]byte // list of available buffers
-	nfreelist int        // number of free buffers
+	buf   []byte // encode/decode byte stream
+	index int    // write point
 
 	// pools of basic types to amortize allocation.
 	bools   []bool
@@ -259,20 +258,11 @@ type Buffer struct {
 // NewBuffer allocates a new Buffer and initializes its internal data to
 // the contents of the argument slice.
 func NewBuffer(e []byte) *Buffer {
-	p := new(Buffer)
-	if e == nil {
-		e = p.bufalloc()
-	}
-	p.buf = e
-	p.index = 0
-	return p
+	return &Buffer{buf: e}
 }
 
 // Reset resets the Buffer, ready for marshaling a new protocol buffer.
 func (p *Buffer) Reset() {
-	if p.buf == nil {
-		p.buf = p.bufalloc()
-	}
 	p.buf = p.buf[0:0] // for reading/writing
 	p.index = 0        // for reading
 }
@@ -287,44 +277,6 @@ func (p *Buffer) SetBuf(s []byte) {
 // Bytes returns the contents of the Buffer.
 func (p *Buffer) Bytes() []byte { return p.buf }
 
-// Allocate a buffer for the Buffer.
-func (p *Buffer) bufalloc() []byte {
-	if p.nfreelist > 0 {
-		// reuse an old one
-		p.nfreelist--
-		s := p.freelist[p.nfreelist]
-		return s[0:0]
-	}
-	// make a new one
-	s := make([]byte, 0, 16)
-	return s
-}
-
-// Free (and remember in freelist) a byte buffer for the Buffer.
-func (p *Buffer) buffree(s []byte) {
-	if p.nfreelist < len(p.freelist) {
-		// Take next slot.
-		p.freelist[p.nfreelist] = s
-		p.nfreelist++
-		return
-	}
-
-	// Find the smallest.
-	besti := -1
-	bestl := len(s)
-	for i, b := range p.freelist {
-		if len(b) < bestl {
-			besti = i
-			bestl = len(b)
-		}
-	}
-
-	// Overwrite the smallest.
-	if besti >= 0 {
-		p.freelist[besti] = s
-	}
-}
-
 /*
  * Helper routines for simplifying the creation of optional fields of basic type.
  */
@@ -332,17 +284,13 @@ func (p *Buffer) buffree(s []byte) {
 // Bool is a helper routine that allocates a new bool value
 // to store v and returns a pointer to it.
 func Bool(v bool) *bool {
-	p := new(bool)
-	*p = v
-	return p
+	return &v
 }
 
 // Int32 is a helper routine that allocates a new int32 value
 // to store v and returns a pointer to it.
 func Int32(v int32) *int32 {
-	p := new(int32)
-	*p = v
-	return p
+	return &v
 }
 
 // Int is a helper routine that allocates a new int32 value
@@ -357,25 +305,19 @@ func Int(v int) *int32 {
 // Int64 is a helper routine that allocates a new int64 value
 // to store v and returns a pointer to it.
 func Int64(v int64) *int64 {
-	p := new(int64)
-	*p = v
-	return p
+	return &v
 }
 
 // Float32 is a helper routine that allocates a new float32 value
 // to store v and returns a pointer to it.
 func Float32(v float32) *float32 {
-	p := new(float32)
-	*p = v
-	return p
+	return &v
 }
 
 // Float64 is a helper routine that allocates a new float64 value
 // to store v and returns a pointer to it.
 func Float64(v float64) *float64 {
-	p := new(float64)
-	*p = v
-	return p
+	return &v
 }
 
 // Uint32 is a helper routine that allocates a new uint32 value
@@ -389,17 +331,13 @@ func Uint32(v uint32) *uint32 {
 // Uint64 is a helper routine that allocates a new uint64 value
 // to store v and returns a pointer to it.
 func Uint64(v uint64) *uint64 {
-	p := new(uint64)
-	*p = v
-	return p
+	return &v
 }
 
 // String is a helper routine that allocates a new string value
 // to store v and returns a pointer to it.
 func String(v string) *string {
-	p := new(string)
-	*p = v
-	return p
+	return &v
 }
 
 // EnumName is a helper function to simplify printing protocol buffer enums
@@ -409,7 +347,7 @@ func EnumName(m map[int32]string, v int32) string {
 	if ok {
 		return s
 	}
-	return "unknown_enum_" + strconv.Itoa(int(v))
+	return strconv.Itoa(int(v))
 }
 
 // UnmarshalJSONEnum is a helper function to simplify recovering enum int values
@@ -417,9 +355,7 @@ func EnumName(m map[int32]string, v int32) string {
 // names to its int values, and a byte buffer containing the JSON-encoded
 // value, it returns an int32 that can be cast to the enum type by the caller.
 //
-// The function can deal with older JSON representations, which represented
-// enums directly by their int32 values, or with newer representations, which
-// use the symbolic name as a string.
+// The function can deal with both JSON representations, numeric and symbolic.
 func UnmarshalJSONEnum(m map[string]int32, data []byte, enumName string) (int32, error) {
 	if data[0] == '"' {
 		// New style: enums are strings.
@@ -668,7 +604,18 @@ func setDefaults(v reflect.Value, recur, zeros bool) {
 		if f.IsNil() {
 			continue
 		}
-		setDefaults(f, recur, zeros)
+		// f is *T or []*T
+		if f.Kind() == reflect.Ptr {
+			setDefaults(f, recur, zeros)
+		} else {
+			for i := 0; i < f.Len(); i++ {
+				e := f.Index(i)
+				if e.IsNil() {
+					continue
+				}
+				setDefaults(e, recur, zeros)
+			}
+		}
 	}
 }
 
@@ -693,6 +640,10 @@ type scalarField struct {
 	value interface{}  // the proto-declared default value, or nil
 }
 
+func ptrToStruct(t reflect.Type) bool {
+	return t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct
+}
+
 // t is a struct type.
 func buildDefaultMessage(t reflect.Type) (dm defaultMessage) {
 	sprop := GetProperties(t)
@@ -705,7 +656,7 @@ func buildDefaultMessage(t reflect.Type) (dm defaultMessage) {
 		ft := t.Field(fi).Type
 
 		// nested messages
-		if ft.Kind() == reflect.Ptr && ft.Elem().Kind() == reflect.Struct {
+		if ptrToStruct(ft) || (ft.Kind() == reflect.Slice && ptrToStruct(ft.Elem())) {
 			dm.nested = append(dm.nested, fi)
 			continue
 		}

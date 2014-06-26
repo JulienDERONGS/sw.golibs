@@ -43,6 +43,13 @@ import (
 	"unicode/utf8"
 )
 
+// textUnmarshaler is implemented by Messages that can unmarshal themsleves.
+// It is identical to encoding.TextUnmarshaler, introduced in go 1.2,
+// which will eventually replace it.
+type textUnmarshaler interface {
+	UnmarshalText(text []byte) error
+}
+
 type ParseError struct {
 	Message string
 	Line    int // 1-based line number
@@ -193,8 +200,8 @@ func (p *textParser) advance() {
 }
 
 var (
-	errBadUTF8 = errors.New("bad UTF-8")
-	errBadHex  = errors.New("bad hexadecimal")
+	errBadUTF8 = errors.New("proto: bad UTF-8")
+	errBadHex  = errors.New("proto: bad hexadecimal")
 )
 
 func unquoteC(s string, quote rune) (string, error) {
@@ -505,16 +512,17 @@ func (p *textParser) readStruct(sv reflect.Value, terminator string) *ParseError
 				return p.errorf("unknown field name %q in %v", tok.value, st)
 			}
 
+			dst := sv.Field(fi)
+			isDstNil := isNil(dst)
+
 			// Check that it's not already set if it's not a repeated field.
-			if !props.Repeated && !isNil(sv.Field(fi)) {
+			if !props.Repeated && !isDstNil {
 				return p.errorf("non-repeated field %q was repeated", tok.value)
 			}
 
 			if err := p.checkForColon(props, st.Field(fi).Type); err != nil {
 				return err
 			}
-
-			dst := sv.Field(fi)
 
 			// Parse into the field.
 			if err := p.readAny(dst, props); err != nil {
@@ -642,6 +650,7 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 		default:
 			return p.errorf("expected '{' or '<', found %q", tok.value)
 		}
+		// TODO: Handle nested messages which implement textUnmarshaler.
 		return p.readStruct(fv, terminator)
 	case reflect.Uint32:
 		if x, err := strconv.ParseUint(tok.value, 0, 32); err == nil {
@@ -657,8 +666,14 @@ func (p *textParser) readAny(v reflect.Value, props *Properties) *ParseError {
 	return p.errorf("invalid %v: %v", v.Type(), tok.value)
 }
 
-// UnmarshalText reads a protocol buffer in Text format.
+// UnmarshalText reads a protocol buffer in Text format. UnmarshalText resets pb
+// before starting to unmarshal, so any existing data in pb is always removed.
 func UnmarshalText(s string, pb Message) error {
+	if um, ok := pb.(textUnmarshaler); ok {
+		err := um.UnmarshalText([]byte(s))
+		return err
+	}
+	pb.Reset()
 	v := reflect.ValueOf(pb)
 	if pe := newTextParser(s).readStruct(v.Elem(), ""); pe != nil {
 		return pe

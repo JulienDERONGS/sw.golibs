@@ -2,22 +2,33 @@
 // source: my_test/test.proto
 // DO NOT EDIT!
 
+/*
+Package my_test is a generated protocol buffer package.
+
+It is generated from these files:
+	my_test/test.proto
+
+It has these top-level messages:
+	Request
+	Reply
+	ReplyExtensions
+	OldReply
+*/
 package my_test
 
 import proto "code.google.com/p/goprotobuf/proto"
-import json "encoding/json"
 import math "math"
 
 // discarding unused import multi2 "multi/multi1.pb"
 
-// Reference proto, json, and math imports to suppress error if they are not otherwise used.
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type HatType int32
 
 const (
+	// deliberately skipping 0
 	HatType_FEDORA HatType = 1
 	HatType_FEZ    HatType = 2
 )
@@ -39,9 +50,6 @@ func (x HatType) Enum() *HatType {
 func (x HatType) String() string {
 	return proto.EnumName(HatType_name, int32(x))
 }
-func (x HatType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
-}
 func (x *HatType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(HatType_value, data, "HatType")
 	if err != nil {
@@ -51,6 +59,7 @@ func (x *HatType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// This enum represents days of the week.
 type Days int32
 
 const (
@@ -77,9 +86,6 @@ func (x Days) Enum() *Days {
 }
 func (x Days) String() string {
 	return proto.EnumName(Days_name, int32(x))
-}
-func (x Days) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
 }
 func (x *Days) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Days_value, data, "Days")
@@ -117,9 +123,6 @@ func (x Request_Color) Enum() *Request_Color {
 func (x Request_Color) String() string {
 	return proto.EnumName(Request_Color_name, int32(x))
 }
-func (x Request_Color) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
-}
 func (x *Request_Color) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Request_Color_value, data, "Request_Color")
 	if err != nil {
@@ -153,9 +156,6 @@ func (x Reply_Entry_Game) Enum() *Reply_Entry_Game {
 func (x Reply_Entry_Game) String() string {
 	return proto.EnumName(Reply_Entry_Game_name, int32(x))
 }
-func (x Reply_Entry_Game) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
-}
 func (x *Reply_Entry_Game) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Reply_Entry_Game_value, data, "Reply_Entry_Game")
 	if err != nil {
@@ -165,75 +165,81 @@ func (x *Reply_Entry_Game) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// This is a message that might be sent somewhere.
 type Request struct {
-	Key              []int64            `protobuf:"varint,1,rep,name=key" json:"key,omitempty"`
-	Hue              *Request_Color     `protobuf:"varint,3,opt,name=hue,enum=my.test.Request_Color" json:"hue,omitempty"`
-	Hat              *HatType           `protobuf:"varint,4,opt,name=hat,enum=my.test.HatType,def=1" json:"hat,omitempty"`
+	Key []int64 `protobuf:"varint,1,rep,name=key" json:"key,omitempty"`
+	//  optional imp.ImportedMessage imported_message = 2;
+	Hue *Request_Color `protobuf:"varint,3,opt,name=hue,enum=my.test.Request_Color" json:"hue,omitempty"`
+	Hat *HatType       `protobuf:"varint,4,opt,name=hat,enum=my.test.HatType,def=1" json:"hat,omitempty"`
+	//  optional imp.ImportedMessage.Owner owner = 6;
 	Deadline         *float32           `protobuf:"fixed32,7,opt,name=deadline,def=inf" json:"deadline,omitempty"`
 	Somegroup        *Request_SomeGroup `protobuf:"group,8,opt,name=SomeGroup" json:"somegroup,omitempty"`
 	Reset_           *int32             `protobuf:"varint,12,opt,name=reset" json:"reset,omitempty"`
 	XXX_unrecognized []byte             `json:"-"`
 }
 
-func (this *Request) Reset()         { *this = Request{} }
-func (this *Request) String() string { return proto.CompactTextString(this) }
-func (*Request) ProtoMessage()       {}
+func (m *Request) Reset()         { *m = Request{} }
+func (m *Request) String() string { return proto.CompactTextString(m) }
+func (*Request) ProtoMessage()    {}
 
 const Default_Request_Hat HatType = HatType_FEDORA
 
 var Default_Request_Deadline float32 = float32(math.Inf(1))
 
-func (this *Request) GetKey() []int64 {
-	if this != nil {
-		return this.Key
+func (m *Request) GetKey() []int64 {
+	if m != nil {
+		return m.Key
 	}
 	return nil
 }
 
-func (this *Request) GetHue() Request_Color {
-	if this != nil && this.Hue != nil {
-		return *this.Hue
+func (m *Request) GetHue() Request_Color {
+	if m != nil && m.Hue != nil {
+		return *m.Hue
 	}
-	return 0
+	return Request_RED
 }
 
-func (this *Request) GetHat() HatType {
-	if this != nil && this.Hat != nil {
-		return *this.Hat
+func (m *Request) GetHat() HatType {
+	if m != nil && m.Hat != nil {
+		return *m.Hat
 	}
 	return Default_Request_Hat
 }
 
-func (this *Request) GetDeadline() float32 {
-	if this != nil && this.Deadline != nil {
-		return *this.Deadline
+func (m *Request) GetDeadline() float32 {
+	if m != nil && m.Deadline != nil {
+		return *m.Deadline
 	}
 	return Default_Request_Deadline
 }
 
-func (this *Request) GetSomegroup() *Request_SomeGroup {
-	if this != nil {
-		return this.Somegroup
+func (m *Request) GetSomegroup() *Request_SomeGroup {
+	if m != nil {
+		return m.Somegroup
 	}
 	return nil
 }
 
-func (this *Request) GetReset_() int32 {
-	if this != nil && this.Reset_ != nil {
-		return *this.Reset_
+func (m *Request) GetReset_() int32 {
+	if m != nil && m.Reset_ != nil {
+		return *m.Reset_
 	}
 	return 0
 }
 
 type Request_SomeGroup struct {
-	GroupField *int32 `protobuf:"varint,9,opt,name=group_field" json:"group_field,omitempty"`
+	GroupField       *int32 `protobuf:"varint,9,opt,name=group_field" json:"group_field,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
 }
 
-func (this *Request_SomeGroup) Reset() { *this = Request_SomeGroup{} }
+func (m *Request_SomeGroup) Reset()         { *m = Request_SomeGroup{} }
+func (m *Request_SomeGroup) String() string { return proto.CompactTextString(m) }
+func (*Request_SomeGroup) ProtoMessage()    {}
 
-func (this *Request_SomeGroup) GetGroupField() int32 {
-	if this != nil && this.GroupField != nil {
-		return *this.GroupField
+func (m *Request_SomeGroup) GetGroupField() int32 {
+	if m != nil && m.GroupField != nil {
+		return *m.GroupField
 	}
 	return 0
 }
@@ -245,9 +251,9 @@ type Reply struct {
 	XXX_unrecognized []byte                    `json:"-"`
 }
 
-func (this *Reply) Reset()         { *this = Reply{} }
-func (this *Reply) String() string { return proto.CompactTextString(this) }
-func (*Reply) ProtoMessage()       {}
+func (m *Reply) Reset()         { *m = Reply{} }
+func (m *Reply) String() string { return proto.CompactTextString(m) }
+func (*Reply) ProtoMessage()    {}
 
 var extRange_Reply = []proto.ExtensionRange{
 	{100, 536870911},
@@ -256,23 +262,23 @@ var extRange_Reply = []proto.ExtensionRange{
 func (*Reply) ExtensionRangeArray() []proto.ExtensionRange {
 	return extRange_Reply
 }
-func (this *Reply) ExtensionMap() map[int32]proto.Extension {
-	if this.XXX_extensions == nil {
-		this.XXX_extensions = make(map[int32]proto.Extension)
+func (m *Reply) ExtensionMap() map[int32]proto.Extension {
+	if m.XXX_extensions == nil {
+		m.XXX_extensions = make(map[int32]proto.Extension)
 	}
-	return this.XXX_extensions
+	return m.XXX_extensions
 }
 
-func (this *Reply) GetFound() []*Reply_Entry {
-	if this != nil {
-		return this.Found
+func (m *Reply) GetFound() []*Reply_Entry {
+	if m != nil {
+		return m.Found
 	}
 	return nil
 }
 
-func (this *Reply) GetCompactKeys() []int32 {
-	if this != nil {
-		return this.CompactKeys
+func (m *Reply) GetCompactKeys() []int32 {
+	if m != nil {
+		return m.CompactKeys
 	}
 	return nil
 }
@@ -284,29 +290,29 @@ type Reply_Entry struct {
 	XXX_unrecognized              []byte `json:"-"`
 }
 
-func (this *Reply_Entry) Reset()         { *this = Reply_Entry{} }
-func (this *Reply_Entry) String() string { return proto.CompactTextString(this) }
-func (*Reply_Entry) ProtoMessage()       {}
+func (m *Reply_Entry) Reset()         { *m = Reply_Entry{} }
+func (m *Reply_Entry) String() string { return proto.CompactTextString(m) }
+func (*Reply_Entry) ProtoMessage()    {}
 
 const Default_Reply_Entry_Value int64 = 7
 
-func (this *Reply_Entry) GetKeyThatNeeds_1234Camel_CasIng() int64 {
-	if this != nil && this.KeyThatNeeds_1234Camel_CasIng != nil {
-		return *this.KeyThatNeeds_1234Camel_CasIng
+func (m *Reply_Entry) GetKeyThatNeeds_1234Camel_CasIng() int64 {
+	if m != nil && m.KeyThatNeeds_1234Camel_CasIng != nil {
+		return *m.KeyThatNeeds_1234Camel_CasIng
 	}
 	return 0
 }
 
-func (this *Reply_Entry) GetValue() int64 {
-	if this != nil && this.Value != nil {
-		return *this.Value
+func (m *Reply_Entry) GetValue() int64 {
+	if m != nil && m.Value != nil {
+		return *m.Value
 	}
 	return Default_Reply_Entry_Value
 }
 
-func (this *Reply_Entry) GetXMyFieldName_2() int64 {
-	if this != nil && this.XMyFieldName_2 != nil {
-		return *this.XMyFieldName_2
+func (m *Reply_Entry) GetXMyFieldName_2() int64 {
+	if m != nil && m.XMyFieldName_2 != nil {
+		return *m.XMyFieldName_2
 	}
 	return 0
 }
@@ -315,9 +321,9 @@ type ReplyExtensions struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (this *ReplyExtensions) Reset()         { *this = ReplyExtensions{} }
-func (this *ReplyExtensions) String() string { return proto.CompactTextString(this) }
-func (*ReplyExtensions) ProtoMessage()       {}
+func (m *ReplyExtensions) Reset()         { *m = ReplyExtensions{} }
+func (m *ReplyExtensions) String() string { return proto.CompactTextString(m) }
+func (*ReplyExtensions) ProtoMessage()    {}
 
 var E_ReplyExtensions_Time = &proto.ExtensionDesc{
 	ExtendedType:  (*Reply)(nil),
@@ -332,15 +338,15 @@ type OldReply struct {
 	XXX_unrecognized []byte                    `json:"-"`
 }
 
-func (this *OldReply) Reset()         { *this = OldReply{} }
-func (this *OldReply) String() string { return proto.CompactTextString(this) }
-func (*OldReply) ProtoMessage()       {}
+func (m *OldReply) Reset()         { *m = OldReply{} }
+func (m *OldReply) String() string { return proto.CompactTextString(m) }
+func (*OldReply) ProtoMessage()    {}
 
-func (this *OldReply) Marshal() ([]byte, error) {
-	return proto.MarshalMessageSet(this.ExtensionMap())
+func (m *OldReply) Marshal() ([]byte, error) {
+	return proto.MarshalMessageSet(m.ExtensionMap())
 }
-func (this *OldReply) Unmarshal(buf []byte) error {
-	return proto.UnmarshalMessageSet(buf, this.ExtensionMap())
+func (m *OldReply) Unmarshal(buf []byte) error {
+	return proto.UnmarshalMessageSet(buf, m.ExtensionMap())
 }
 
 // ensure OldReply satisfies proto.Marshaler and proto.Unmarshaler
@@ -348,17 +354,17 @@ var _ proto.Marshaler = (*OldReply)(nil)
 var _ proto.Unmarshaler = (*OldReply)(nil)
 
 var extRange_OldReply = []proto.ExtensionRange{
-	{100, 536870911},
+	{100, 2147483646},
 }
 
 func (*OldReply) ExtensionRangeArray() []proto.ExtensionRange {
 	return extRange_OldReply
 }
-func (this *OldReply) ExtensionMap() map[int32]proto.Extension {
-	if this.XXX_extensions == nil {
-		this.XXX_extensions = make(map[int32]proto.Extension)
+func (m *OldReply) ExtensionMap() map[int32]proto.Extension {
+	if m.XXX_extensions == nil {
+		m.XXX_extensions = make(map[int32]proto.Extension)
 	}
-	return this.XXX_extensions
+	return m.XXX_extensions
 }
 
 var E_Tag = &proto.ExtensionDesc{

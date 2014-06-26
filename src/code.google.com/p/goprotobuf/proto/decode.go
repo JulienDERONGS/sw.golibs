@@ -43,10 +43,8 @@ import (
 	"reflect"
 )
 
-// ErrWrongType occurs when the wire encoding for the field disagrees with
-// that specified in the type being decoded.  This is usually caused by attempting
-// to convert an encoded protocol buffer into a struct of the wrong type.
-var ErrWrongType = errors.New("field/encoding mismatch: wrong type for field")
+// errOverflow is returned when an integer is too large to be represented.
+var errOverflow = errors.New("proto: integer overflow")
 
 // The fundamental decoders that interpret bytes on the wire.
 // Those that take integer types all return uint64 and are
@@ -60,7 +58,7 @@ var ErrWrongType = errors.New("field/encoding mismatch: wrong type for field")
 // protocol buffer types.
 func DecodeVarint(buf []byte) (x uint64, n int) {
 	// x, n already 0
-	for shift := uint(0); ; shift += 7 {
+	for shift := uint(0); shift < 64; shift += 7 {
 		if n >= len(buf) {
 			return 0, 0
 		}
@@ -68,10 +66,12 @@ func DecodeVarint(buf []byte) (x uint64, n int) {
 		n++
 		x |= (b & 0x7F) << shift
 		if (b & 0x80) == 0 {
-			break
+			return x, n
 		}
 	}
-	return x, n
+
+	// The number is too large to represent in a 64-bit value.
+	return 0, 0
 }
 
 // DecodeVarint reads a varint-encoded integer from the Buffer.
@@ -84,7 +84,7 @@ func (p *Buffer) DecodeVarint() (x uint64, err error) {
 	i := p.index
 	l := len(p.buf)
 
-	for shift := uint(0); ; shift += 7 {
+	for shift := uint(0); shift < 64; shift += 7 {
 		if i >= l {
 			err = io.ErrUnexpectedEOF
 			return
@@ -93,10 +93,13 @@ func (p *Buffer) DecodeVarint() (x uint64, err error) {
 		i++
 		x |= (uint64(b) & 0x7F) << shift
 		if b < 0x80 {
-			break
+			p.index = i
+			return
 		}
 	}
-	p.index = i
+
+	// The number is too large to represent in a 64-bit value.
+	err = errOverflow
 	return
 }
 
@@ -106,7 +109,7 @@ func (p *Buffer) DecodeVarint() (x uint64, err error) {
 func (p *Buffer) DecodeFixed64() (x uint64, err error) {
 	// x, err already 0
 	i := p.index + 8
-	if i > len(p.buf) {
+	if i < 0 || i > len(p.buf) {
 		err = io.ErrUnexpectedEOF
 		return
 	}
@@ -129,7 +132,7 @@ func (p *Buffer) DecodeFixed64() (x uint64, err error) {
 func (p *Buffer) DecodeFixed32() (x uint64, err error) {
 	// x, err already 0
 	i := p.index + 4
-	if i > len(p.buf) {
+	if i < 0 || i > len(p.buf) {
 		err = io.ErrUnexpectedEOF
 		return
 	}
@@ -182,13 +185,14 @@ func (p *Buffer) DecodeRawBytes(alloc bool) (buf []byte, err error) {
 	if nb < 0 {
 		return nil, fmt.Errorf("proto: bad byte length %d", nb)
 	}
-	if p.index+nb > len(p.buf) {
+	end := p.index + nb
+	if end < p.index || end > len(p.buf) {
 		return nil, io.ErrUnexpectedEOF
 	}
 
 	if !alloc {
 		// todo: check if can get more uses of alloc=false
-		buf = p.buf[p.index : p.index+nb]
+		buf = p.buf[p.index:end]
 		p.index += nb
 		return
 	}
@@ -213,7 +217,6 @@ func (p *Buffer) DecodeStringBytes() (s string, err error) {
 // If the protocol buffer has extensions, and the field matches, add it as an extension.
 // Otherwise, if the XXX_unrecognized field exists, append the skipped data there.
 func (o *Buffer) skipAndSave(t reflect.Type, tag, wire int, base structPointer, unrecField field) error {
-
 	oi := o.index
 
 	err := o.skip(t, tag, wire)
@@ -226,12 +229,6 @@ func (o *Buffer) skipAndSave(t reflect.Type, tag, wire int, base structPointer, 
 	}
 
 	ptr := structPointer_Bytes(base, unrecField)
-
-	if *ptr == nil {
-		// This is the first skipped element,
-		// allocate a new buffer.
-		*ptr = o.bufalloc()
-	}
 
 	// Add the skipped field to struct field
 	obuf := o.buf
@@ -345,6 +342,7 @@ func (p *Buffer) Unmarshal(pb Message) error {
 
 // unmarshalType does the work of unmarshaling a structure.
 func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group bool, base structPointer) error {
+	var state errorState
 	required, reqFields := prop.reqCount, uint64(0)
 
 	var err error
@@ -360,11 +358,11 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 			if is_group {
 				return nil // input is satisfied
 			}
-			return ErrWrongType
+			return fmt.Errorf("proto: %s: wiretype end group for non-group", st)
 		}
 		tag := int(u >> 3)
 		if tag <= 0 {
-			return fmt.Errorf("proto: illegal tag %d", tag)
+			return fmt.Errorf("proto: %s: illegal tag %d", st, tag)
 		}
 		fieldnum, ok := prop.decoderTags.get(tag)
 		if !ok {
@@ -394,11 +392,14 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 				// a packable field
 				dec = p.packedDec
 			} else {
-				err = ErrWrongType
+				err = fmt.Errorf("proto: bad wiretype for field %s.%s: got wiretype %d, want %d", st, st.Field(fieldnum).Name, wire, p.WireType)
 				continue
 			}
 		}
-		err = dec(o, p, base)
+		decErr := dec(o, p, base)
+		if decErr != nil && !state.shouldContinue(decErr, p) {
+			err = decErr
+		}
 		if err == nil && p.Required {
 			// Successfully decoded a required field.
 			if tag <= 64 {
@@ -422,8 +423,14 @@ func (o *Buffer) unmarshalType(st reflect.Type, prop *StructProperties, is_group
 		if is_group {
 			return io.ErrUnexpectedEOF
 		}
+		if state.err != nil {
+			return state.err
+		}
 		if required > 0 {
-			return &ErrRequiredNotSet{st}
+			// Not enough information to determine the exact field. If we use extra
+			// CPU, we could determine the field only if the missing required field
+			// has a tag <= 64 and we check reqFields.
+			return &RequiredNotSetError{"{Unknown}"}
 		}
 	}
 	return err
@@ -555,6 +562,9 @@ func (o *Buffer) dec_slice_packed_int32(p *Properties, base structPointer) error
 	nb := int(nn) // number of bytes of encoded int32s
 
 	fin := o.index + nb
+	if fin < o.index {
+		return errOverflow
+	}
 	for o.index < fin {
 		u, err := p.valDec(o)
 		if err != nil {
@@ -587,6 +597,9 @@ func (o *Buffer) dec_slice_packed_int64(p *Properties, base structPointer) error
 	nb := int(nn) // number of bytes of encoded int64s
 
 	fin := o.index + nb
+	if fin < o.index {
+		return errOverflow
+	}
 	for o.index < fin {
 		u, err := p.valDec(o)
 		if err != nil {
@@ -621,8 +634,12 @@ func (o *Buffer) dec_slice_slice_byte(p *Properties, base structPointer) error {
 
 // Decode a group.
 func (o *Buffer) dec_struct_group(p *Properties, base structPointer) error {
-	bas := toStructPointer(reflect.New(p.stype))
-	structPointer_SetStructPointer(base, p.field, bas)
+	bas := structPointer_GetStructPointer(base, p.field)
+	if structPointer_IsNil(bas) {
+		// allocate new nested message
+		bas = toStructPointer(reflect.New(p.stype))
+		structPointer_SetStructPointer(base, p.field, bas)
+	}
 	return o.unmarshalType(p.stype, p.sprop, true, bas)
 }
 
@@ -633,13 +650,16 @@ func (o *Buffer) dec_struct_message(p *Properties, base structPointer) (err erro
 		return e
 	}
 
-	v := reflect.New(p.stype)
-	bas := toStructPointer(v)
-	structPointer_SetStructPointer(base, p.field, bas)
+	bas := structPointer_GetStructPointer(base, p.field)
+	if structPointer_IsNil(bas) {
+		// allocate new nested message
+		bas = toStructPointer(reflect.New(p.stype))
+		structPointer_SetStructPointer(base, p.field, bas)
+	}
 
 	// If the object can unmarshal itself, let it.
-	if p.isMarshaler {
-		iv := v.Interface()
+	if p.isUnmarshaler {
+		iv := structPointer_Interface(bas, p.stype)
 		return iv.(Unmarshaler).Unmarshal(raw)
 	}
 

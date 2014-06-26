@@ -1,6 +1,6 @@
 // Go support for Protocol Buffers - Google's data interchange format
 //
-// Copyright 2010 The Go Authors.  All rights reserved.
+// Copyright 2013 The Go Authors.  All rights reserved.
 // http://code.google.com/p/goprotobuf/
 //
 // Redistribution and use in source and binary forms, with or without
@@ -29,70 +29,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import "extension_base.proto";
-import "extension_extra.proto";
+package generator
 
-package extension_user;
+import (
+	"testing"
+)
 
-message UserMessage {
-  optional string name = 1;
-  optional string rank = 2;
-}
-
-// Extend with a message
-extend extension_base.BaseMessage {
-  optional UserMessage user_message = 5;
-}
-
-// Extend with a foreign message
-extend extension_base.BaseMessage {
-  optional extension_extra.ExtraMessage extra_message = 9;
-}
-
-// Extend with some primitive types
-extend extension_base.BaseMessage {
-  optional int32 width = 6;
-  optional int64 area = 7;
-}
-
-// Extend inside the scope of another type
-message LoudMessage {
-  extend extension_base.BaseMessage {
-    optional uint32 volume = 8;
-  }
-  extensions 100 to max;
-}
-
-// Extend inside the scope of another type, using a message.
-message LoginMessage {
-  extend extension_base.BaseMessage {
-    optional UserMessage user_message = 16;
-  }
-}
-
-// Extend with a repeated field
-extend extension_base.BaseMessage {
-  repeated Detail detail = 17;
-}
-
-message Detail {
-  optional string color = 1;
-}
-
-// An extension of an extension
-message Announcement {
-  optional string words = 1;
-  extend LoudMessage {
-    optional Announcement loud_ext = 100;
-  }
-}
-
-// Something that can be put in a message set.
-message OldStyleParcel {
-  extend extension_base.OldStyleMessage {
-    optional OldStyleParcel message_set_extension = 2001;
-  }
-
-  required string name = 1;
-  optional int32 height = 2;
+func TestCamelCase(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"one", "One"},
+		{"one_two", "OneTwo"},
+		{"_my_field_name_2", "XMyFieldName_2"},
+		{"Something_Capped", "Something_Capped"},
+		{"my_Name", "My_Name"},
+		{"OneTwo", "OneTwo"},
+		{"_", "X"},
+		{"_a_", "XA_"},
+	}
+	for _, tc := range tests {
+		if got := CamelCase(tc.in); got != tc.want {
+			t.Errorf("CamelCase(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
 }
