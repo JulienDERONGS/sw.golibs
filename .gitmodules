@@ -10,3 +10,15 @@
 [submodule "src/github.com/jonas-p/go-shp"]
 	path = src/github.com/jonas-p/go-shp
 	url = git@github.com:masagroup/go-shp.git
+[submodule "src/github.com/fluffle/goirc"]
+	path = src/github.com/fluffle/goirc
+	url = git@github.com:masagroup/goirc.git
+[submodule "src/code.google.com/p/gomock"]
+	path = src/code.google.com/p/gomock
+	url = git@github.com:masagroup/gomock.git
+[submodule "src/github.com/fluffle/goevent"]
+	path = src/github.com/fluffle/goevent
+	url = git@github.com:masagroup/goevent.git
+[submodule "src/github.com/golang/glog"]
+	path = src/github.com/golang/glog
+	url = git@github.com:masagroup/glog.git
