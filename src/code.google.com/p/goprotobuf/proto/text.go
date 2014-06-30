@@ -39,7 +39,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"os"
 	"reflect"
 	"sort"
@@ -56,9 +55,6 @@ var (
 	backslashT      = []byte{'\\', 't'}
 	backslashDQ     = []byte{'\\', '"'}
 	backslashBS     = []byte{'\\', '\\'}
-	posInf          = []byte("inf")
-	negInf          = []byte("-inf")
-	nan             = []byte("nan")
 )
 
 type writer interface {
@@ -72,13 +68,6 @@ type textWriter struct {
 	complete bool // if the current position is a complete line
 	compact  bool // whether to write out as a one-liner
 	w        writer
-}
-
-// textMarshaler is implemented by Messages that can marshal themsleves.
-// It is identical to encoding.TextMarshaler, introduced in go 1.2,
-// which will eventually replace it.
-type textMarshaler interface {
-	MarshalText() (text []byte, err error)
 }
 
 func (w *textWriter) WriteString(s string) (n int, err error) {
@@ -194,11 +183,8 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 	sprops := GetProperties(st)
 	for i := 0; i < sv.NumField(); i++ {
 		fv := sv.Field(i)
-		props := sprops.Prop[i]
-		name := st.Field(i).Name
-
-		if strings.HasPrefix(name, "XXX_") {
-			// There are two XXX_ fields:
+		if name := st.Field(i).Name; strings.HasPrefix(name, "XXX_") {
+			// There's only two XXX_ fields:
 			//   XXX_unrecognized []byte
 			//   XXX_extensions   map[int32]proto.Extension
 			// The first is handled here;
@@ -210,6 +196,7 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 			}
 			continue
 		}
+		props := sprops.Prop[i]
 		if fv.Kind() == reflect.Ptr && fv.IsNil() {
 			// Field not filled in. This could be an optional field or
 			// a required field that wasn't filled in. Either way, there
@@ -232,16 +219,7 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 						return err
 					}
 				}
-				v := fv.Index(j)
-				if v.Kind() == reflect.Ptr && v.IsNil() {
-					// A nil message in a repeated field is not valid,
-					// but we can handle that more gracefully than panicking.
-					if _, err := w.Write([]byte("<nil>\n")); err != nil {
-						return err
-					}
-					continue
-				}
-				if err := writeAny(w, v, props); err != nil {
+				if err := writeAny(w, fv.Index(j), props); err != nil {
 					return err
 				}
 				if err := w.WriteByte('\n'); err != nil {
@@ -266,9 +244,18 @@ func writeStruct(w *textWriter, sv reflect.Value) error {
 			continue
 		}
 
-		// Enums have a String method, so writeAny will work fine.
-		if err := writeAny(w, fv, props); err != nil {
-			return err
+		var written bool
+		var err error
+		if props.Enum != "" {
+			written, err = tryWriteEnum(w, props.Enum, fv)
+			if err != nil {
+				return err
+			}
+		}
+		if !written {
+			if err := writeAny(w, fv, props); err != nil {
+				return err
+			}
 		}
 
 		if err := w.WriteByte('\n'); err != nil {
@@ -308,31 +295,31 @@ func writeRaw(w *textWriter, b []byte) error {
 	return nil
 }
 
+// tryWriteEnum attempts to write an enum value as a symbolic constant.
+// If the enum is unregistered, nothing is written and false is returned.
+func tryWriteEnum(w *textWriter, enum string, v reflect.Value) (bool, error) {
+	v = reflect.Indirect(v)
+	if v.Type().Kind() != reflect.Int32 {
+		return false, nil
+	}
+	m, ok := enumNameMaps[enum]
+	if !ok {
+		return false, nil
+	}
+	str, ok := m[int32(v.Int())]
+	if !ok {
+		return false, nil
+	}
+	_, err := fmt.Fprintf(w, str)
+	return true, err
+}
+
 // writeAny writes an arbitrary field.
 func writeAny(w *textWriter, v reflect.Value, props *Properties) error {
 	v = reflect.Indirect(v)
 
-	// Floats have special cases.
-	if v.Kind() == reflect.Float32 || v.Kind() == reflect.Float64 {
-		x := v.Float()
-		var b []byte
-		switch {
-		case math.IsInf(x, 1):
-			b = posInf
-		case math.IsInf(x, -1):
-			b = negInf
-		case math.IsNaN(x):
-			b = nan
-		}
-		if b != nil {
-			_, err := w.Write(b)
-			return err
-		}
-		// Other values are handled below.
-	}
-
 	// We don't attempt to serialise every possible value type; only those
-	// that can occur in protocol buffers.
+	// that can occur in protocol buffers, plus a few extra that were easy.
 	switch v.Kind() {
 	case reflect.Slice:
 		// Should only be a []byte; repeated fields are handled in writeStruct.
@@ -358,15 +345,7 @@ func writeAny(w *textWriter, v reflect.Value, props *Properties) error {
 			}
 		}
 		w.indent()
-		if tm, ok := v.Interface().(textMarshaler); ok {
-			text, err := tm.MarshalText()
-			if err != nil {
-				return err
-			}
-			if _, err = w.Write(text); err != nil {
-				return err
-			}
-		} else if err := writeStruct(w, v); err != nil {
+		if err := writeStruct(w, v); err != nil {
 			return err
 		}
 		w.unindent()
@@ -485,7 +464,7 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 			}
 			continue
 		}
-		if _, err := fmt.Fprint(w, tag); err != nil {
+		if _, err := fmt.Fprintf(w, "tag%d", tag); err != nil {
 			return err
 		}
 		if wire != WireStartGroup {
@@ -501,7 +480,7 @@ func writeUnknownStruct(w *textWriter, data []byte) (err error) {
 		switch wire {
 		case WireBytes:
 			buf, e := b.DecodeRawBytes(false)
-			if e == nil {
+			if err == nil {
 				_, err = fmt.Fprintf(w, "%q", buf)
 			} else {
 				_, err = fmt.Fprintf(w, "/* %v */", e)
@@ -653,19 +632,6 @@ func marshalText(w io.Writer, pb Message, compact bool) error {
 		compact:  compact,
 	}
 
-	if tm, ok := pb.(textMarshaler); ok {
-		text, err := tm.MarshalText()
-		if err != nil {
-			return err
-		}
-		if _, err = aw.Write(text); err != nil {
-			return err
-		}
-		if bw != nil {
-			return bw.Flush()
-		}
-		return nil
-	}
 	// Dereference the received pointer so we don't have outer < and >.
 	v := reflect.Indirect(val)
 	if err := writeStruct(aw, v); err != nil {
@@ -679,9 +645,7 @@ func marshalText(w io.Writer, pb Message, compact bool) error {
 
 // MarshalText writes a given protocol buffer in text format.
 // The only errors returned are from w.
-func MarshalText(w io.Writer, pb Message) error {
-	return marshalText(w, pb, false)
-}
+func MarshalText(w io.Writer, pb Message) error { return marshalText(w, pb, false) }
 
 // MarshalTextString is the same as MarshalText, but returns the string directly.
 func MarshalTextString(pb Message) string {

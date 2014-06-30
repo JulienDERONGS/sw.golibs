@@ -33,8 +33,3 @@ package imp;
 message PubliclyImportedMessage {
   optional int64 field = 1;
 }
-
-enum PubliclyImportedEnum {
-  GLASSES = 1;
-  HAIR = 2;
-}

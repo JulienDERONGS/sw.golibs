@@ -261,10 +261,10 @@ var unMarshalTextTests = []UnmarshalTextTest{
 		out: &MyMessage{
 			Count: Int32(42),
 			Others: []*OtherMessage{
-				{},
-				{},
-				{},
-				{},
+				&OtherMessage{},
+				&OtherMessage{},
+				&OtherMessage{},
+				&OtherMessage{},
 			},
 		},
 	},
@@ -373,11 +373,11 @@ var unMarshalTextTests = []UnmarshalTextTest{
 				Connected: Bool(true),
 			},
 			Others: []*OtherMessage{
-				{
+				&OtherMessage{
 					Key:   Int64(3735928559),
 					Value: []byte{0x1, 'A', '\a', '\f'},
 				},
-				{
+				&OtherMessage{
 					Weight: Float32(58.9),
 					Inner: &InnerMessage{
 						Host: String("lesha.mtv"),
@@ -410,16 +410,6 @@ func TestUnmarshalText(t *testing.T) {
 					i, err.Error(), test.err)
 			}
 		}
-	}
-}
-
-func TestUnmarshalTextCustomMessage(t *testing.T) {
-	msg := &textMessage{}
-	if err := UnmarshalText("custom", msg); err != nil {
-		t.Errorf("Unexpected error from custom unmarshal: %v", err)
-	}
-	if UnmarshalText("not custom", msg) == nil {
-		t.Errorf("Didn't get expected error from custom unmarshal")
 	}
 }
 

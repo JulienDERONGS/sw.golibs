@@ -88,6 +88,7 @@ func mergeStruct(out, in reflect.Value) {
 		mergeExtension(emOut.ExtensionMap(), emIn.ExtensionMap())
 	}
 
+	// Groups don't have XXX_unrecognized fields.
 	uf := in.FieldByName("XXX_unrecognized")
 	if !uf.IsValid() {
 		return
@@ -131,11 +132,8 @@ func mergeAny(out, in reflect.Value) {
 		}
 		switch in.Type().Elem().Kind() {
 		case reflect.Bool, reflect.Float32, reflect.Float64, reflect.Int32, reflect.Int64,
-			reflect.String, reflect.Uint32, reflect.Uint64:
+			reflect.String, reflect.Uint32, reflect.Uint64, reflect.Uint8:
 			out.Set(reflect.AppendSlice(out, in))
-		case reflect.Uint8:
-			// []byte is a scalar bytes field.
-			out.Set(in)
 		default:
 			for i := 0; i < n; i++ {
 				x := reflect.Indirect(reflect.New(in.Type().Elem()))
