@@ -9,9 +9,29 @@
         <update name="protobuf" version="2.3.0"/>
     </target>
 
+    <macrodef name="go_vet">
+        <attribute name="module"/>
+        <element name="elements" implicit="true" optional="true"/>
+        <sequential>
+            <go_exec gopath="${root.dir}">
+                <arg value="tool"/>
+                <arg value="vet"/>
+                <elements/>
+                <arg value="${root.dir}/@{module}"/>
+            </go_exec>
+        </sequential>
+    </macrodef>
+
     <target name="build">
         <go_build/>
-        <go cmd="vet"/>
+        <go_vet module="src">
+            <!-- There are too many Print() behaving like Printf. Not easy
+                 to fix upstream since it means changing the API.
+            -->
+            <arg value="-printf=false"/>
+            <!-- go-spew does weird things in tests -->
+            <arg value="-unsafeptr=false"/>
+        </go_vet>
     </target>
 
     <target name="test">
