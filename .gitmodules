@@ -22,3 +22,6 @@
 [submodule "src/github.com/golang/glog"]
 	path = src/github.com/golang/glog
 	url = git@github.com:masagroup/glog.git
+[submodule "src/github.com/davecheney/profile"]
+	path = src/github.com/davecheney/profile
+	url = git@github.com:masagroup/profile.git
