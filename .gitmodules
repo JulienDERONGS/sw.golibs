@@ -1,6 +1,3 @@
-[submodule "src/github.com/fluffle/goevent"]
-	path = src/github.com/fluffle/goevent
-	url = git@github.com:masagroup/goevent.git
 [submodule "src/github.com/golang/glog"]
 	path = src/github.com/golang/glog
 	url = git@github.com:masagroup/glog.git
