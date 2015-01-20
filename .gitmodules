@@ -7,9 +7,6 @@
 [submodule "src/github.com/fluffle/goirc"]
 	path = src/github.com/fluffle/goirc
 	url = git@github.com:masagroup/goirc.git
-[submodule "src/code.google.com/p/gomock"]
-	path = src/code.google.com/p/gomock
-	url = git@github.com:masagroup/gomock.git
 [submodule "src/github.com/fluffle/goevent"]
 	path = src/github.com/fluffle/goevent
 	url = git@github.com:masagroup/goevent.git
