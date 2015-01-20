@@ -1,3 +1,0 @@
-[submodule "src/github.com/davecheney/profile"]
-	path = src/github.com/davecheney/profile
-	url = git@github.com:masagroup/profile.git
