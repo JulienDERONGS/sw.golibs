@@ -14,6 +14,10 @@ Imported revision: 0db378d5e52c4d018ecf4b6fd02a9ec4fad9b35c
 
 Imported revision: 83f84dc933714d51504ceed59f43ead21d096fe7
 
+### github.com/fluffle/goevent
+
+Imported revision: 972f9141f4868fad5cd0704bb998b56b18742133
+
 ### github.com/fluffle/goirc
 
 Imported revision: 8a2cb745be98f24d3178c38a189e43e2c3440910
