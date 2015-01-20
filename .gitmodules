@@ -1,6 +1,3 @@
-[submodule "src/github.com/jonas-p/go-shp"]
-	path = src/github.com/jonas-p/go-shp
-	url = git@github.com:masagroup/go-shp.git
 [submodule "src/github.com/fluffle/goirc"]
 	path = src/github.com/fluffle/goirc
 	url = git@github.com:masagroup/goirc.git
