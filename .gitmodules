@@ -1,6 +1,3 @@
-[submodule "src/launchpad.net/gocheck"]
-	path = src/launchpad.net/gocheck
-	url = git@github.com:masagroup/gocheck.git
 [submodule "src/github.com/jonas-p/go-shp"]
 	path = src/github.com/jonas-p/go-shp
 	url = git@github.com:masagroup/go-shp.git
