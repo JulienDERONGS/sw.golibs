@@ -6,6 +6,10 @@ golibs is a collection of Go third-party libraries used by Sword project.
 
 Please mention information useful for integrating or updating projects.
 
+### code.google.com/p/gomock
+
+Imported revision: 0db378d5e52c4d018ecf4b6fd02a9ec4fad9b35c
+
 ### github.com/pmezard/go-difflib
 
 Imported revision: a77cab6ef25e3a78c14c1b799cf2da92815d7664
