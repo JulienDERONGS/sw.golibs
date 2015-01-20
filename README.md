@@ -22,6 +22,10 @@ Imported revision: 972f9141f4868fad5cd0704bb998b56b18742133
 
 Imported revision: 8a2cb745be98f24d3178c38a189e43e2c3440910
 
+### github.com/golang/glog
+
+Imported revision: d1c4472bf2efd3826f2b5bdcc02d8416798d678c
+
 ### github.com/jonas-p/go-shp
 
 Imported revision: bf3f35d69d3f3ee73b00c222e0bbb0bbbe3cc752
