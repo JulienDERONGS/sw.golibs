@@ -5,7 +5,7 @@
     <import file="${env.PONEY_HOME}/poney.xml"/>
 
     <target name="update">
-        <update name="golang" version="1.4"/>
+        <update name="golang" version="1.4.1"/>
         <update name="protobuf" version="2.3.0"/>
     </target>
 
