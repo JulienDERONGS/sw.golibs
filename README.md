@@ -1,3 +1,8 @@
+The last released branch of this project is the 6.0. master is not longer built
+but preserved to track changes made on 6.0 but not reported yet.
+
+golibs was merged in cpplibs at cpplib:8bfbb327d5ccbbfc1e4733a62ddb912a89115424
+
 # golibs
 
 golibs is a collection of Go third-party libraries used by Sword project.
