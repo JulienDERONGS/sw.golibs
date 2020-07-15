@@ -7,7 +7,7 @@
 //
 // ****************************************************************************
 
-package util
+package log
 
 import (
 	"bytes"
@@ -235,7 +235,7 @@ type CollapsingWriter struct {
 }
 
 func (w *CollapsingWriter) Write(p []byte) (int, error) {
-	if bytes.Compare(w.last, p) == 0 {
+	if bytes.Equal(w.last, p) {
 		w.count++
 		return 0, nil
 	}
@@ -249,6 +249,6 @@ func (w *CollapsingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func makeWriter(w io.Writer) io.Writer {
+func MakeCollapsingWriter(w io.Writer) io.Writer {
 	return &CollapsingWriter{w: &TimeWriter{w}}
 }
