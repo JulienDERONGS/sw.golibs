@@ -284,28 +284,8 @@ func TestRotatingLogCountsLinesWell(t *testing.T) {
 	checkContent(t, filepath.Join(dir, files[1]), someline)
 }
 
-type writeCloser struct {
-	buf *bytes.Buffer
-}
-
-func (w *writeCloser) Write(p []byte) (int, error) {
-	return w.buf.Write(p)
-}
-
-func (w *writeCloser) String() string {
-	return w.buf.String()
-}
-
-func (w *writeCloser) Close() error {
-	return nil
-}
-
-func (w *writeCloser) Reset() {
-	w.buf.Reset()
-}
-
 func TestCollapsingLog(t *testing.T) {
-	b := writeCloser{buf: &bytes.Buffer{}}
+	b := bytes.Buffer{}
 	w := CollapsingWriter{w: &b}
 	m := []byte("message")
 	n, err := w.Write(m)

@@ -24,10 +24,10 @@ import (
 )
 
 type TimeWriter struct {
-	writer io.WriteCloser
+	writer io.Writer
 }
 
-func (w *TimeWriter) Write(p []byte) (int, error) {
+func (w TimeWriter) Write(p []byte) (int, error) {
 	date := time.Now().Format("[2006-01-02 15:04:05] ")
 	p = append([]byte(date), p...)
 	n, err := w.writer.Write(p)
@@ -39,10 +39,6 @@ func (w *TimeWriter) Write(p []byte) (int, error) {
 		}
 	}
 	return n, err
-}
-
-func (w *TimeWriter) Close() error {
-	return w.writer.Close()
 }
 
 type RotateWriter struct {
@@ -233,7 +229,7 @@ func (w *RotateWriter) Write(p []byte) (int, error) {
 }
 
 type CollapsingWriter struct {
-	w     io.WriteCloser
+	w     io.Writer
 	last  []byte
 	count int
 }
@@ -253,10 +249,6 @@ func (w *CollapsingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (w *CollapsingWriter) Close() error {
-	return w.w.Close()
-}
-
-func MakeCollapsingWriter(w io.WriteCloser) io.WriteCloser {
+func MakeCollapsingWriter(w io.Writer) io.Writer {
 	return &CollapsingWriter{w: &TimeWriter{w}}
 }
