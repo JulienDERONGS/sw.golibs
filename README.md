@@ -6,3 +6,6 @@
 
 ## windows
 * MakeProcessKillItsSubProcess(): ensure sub process are killed when parent is killed.
+
+## config
+* Config: parses the given configuration file and updates it with the currently defined flags. The file gets created if it doesn't exist.
