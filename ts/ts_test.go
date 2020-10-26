@@ -88,6 +88,12 @@ var (
 			},
 		},
 	}
+
+	translationFileSpecialAttributes = TS{Lang: "fr", Version: "2.0", SourceLanguage: "en", Contexts: []*Context{
+		&Context{Name: "Context", Messages: []*Message{
+			{Source: &Source{Text: "km²"}, TranslatorComment: &TranslatorComment{"translator comment"}, Translation: &Translation{Text: "km²"}, Id: "1", OldSource: &OldSource{"old source"}, Utf8: true},
+		}},
+	}}
 )
 
 func TestTsFindTranslation(t *testing.T) {
@@ -202,7 +208,9 @@ const (
                             "Type": "",
                             "Text": "B"
                         },
-                        "Id": ""
+                        "Id": "",
+                        "OldSource": null,
+                        "Utf8": false
                     }
                 ]
             },
@@ -219,7 +227,9 @@ const (
                             "Type": "",
                             "Text": "D"
                         },
-                        "Id": ""
+                        "Id": "",
+                        "OldSource": null,
+                        "Utf8": false
                     },
                     {
                         "Numerus": "",
@@ -231,13 +241,30 @@ const (
                             "Type": "unfinished",
                             "Text": "F"
                         },
-                        "Id": ""
+                        "Id": "",
+                        "OldSource": null,
+                        "Utf8": false
                     }
                 ]
             }
         ]
     }
 }`
+
+	specialAttributes = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.0" language="fr" sourcelanguage="en">
+<context>
+	<name>Context</name>
+	<message utf8="true" id="1">
+		<source>km²</source>
+		<oldsource>old source</oldsource>
+		<translatorcomment>translator comment</translatorcomment>
+		<translation>km²</translation>
+	</message>
+</context>
+</TS>
+`
 )
 
 func TestParsingTranslation(t *testing.T) {
@@ -258,4 +285,10 @@ func TestMarshalTs(t *testing.T) {
 	result, err := datas.MarshalIndent("")
 	assert.NoError(t, err)
 	assert.Equal(t, bytesData, string(result))
+}
+
+func TestSpecialAttributes(t *testing.T) {
+	generatedResult, err := readTranslationData([]byte(specialAttributes))
+	assert.NoError(t, err)
+	assert.Equal(t, translationFileSpecialAttributes, *generatedResult)
 }
