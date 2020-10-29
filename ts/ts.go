@@ -34,12 +34,18 @@ type TranslatorComment struct {
 	Text string `xml:",innerxml"`
 }
 
+type OldSource struct {
+	Text string `xml:",innerxml"`
+}
+
 type Message struct {
 	Numerus           string             `xml:"numerus,attr,omitempty"`
 	Source            *Source            `xml:"source"`
 	TranslatorComment *TranslatorComment `xml:"translatorcomment,omitempty"`
 	Translation       *Translation       `xml:"translation"`
 	Id                string             `xml:"id,attr,omitempty"`
+	OldSource         *OldSource         `xml:"oldsource,omitempty"`
+	Utf8              bool               `xml:"utf8,attr,omitempty"`
 }
 
 type Messages []*Message
