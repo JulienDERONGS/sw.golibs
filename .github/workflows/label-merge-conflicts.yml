@@ -1,0 +1,14 @@
+name: 'Label merge conflicts'
+
+on:
+    pull_request_target:
+        types: [opened, synchronize, reopened]
+
+jobs:
+    triage:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: mschilde/auto-label-merge-conflicts@master
+              with:
+                  CONFLICT_LABEL_NAME: 'conflicts'
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

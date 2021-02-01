@@ -1,5 +1,9 @@
 # sw.golibs
 
+## How to contribute
+
+You can find a lot of information in the [contributing documentation](.github/CONTRIBUTING.md)
+
 ## log
 * RotateWriter: writer to handle log rotation.
 * CollapsingWriter: pack duplicate log messages into a single entry followed by xN with N the number of occurrences.

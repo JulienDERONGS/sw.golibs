@@ -1,0 +1,13 @@
+name: First PR Greetings
+
+on: [pull_request]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: 'Hi @${{ github.actor }}, thanks for contributing to MASA SWORD! Before submitting your first PR, please make sure you have reviewed our [contribution guidelines](
+https://github.com/masagroup/sw.golibs/tree/master/.github/CONTRIBUTING.md). Happy coding!'
